@@ -1,9 +1,9 @@
 {
-    "name": "CameraLocationShortcuts",
-    "version": "0.1.0",
-    "title": "Camera Location Shortcuts",
-    "author": "Gorfiend",
-    "factorio_version": "1.1",
-    "dependencies": ["base >= 1.1"],
-    "description": "Allows quick viewing of user customizable locations/entities."
-  }
+  "name": "CameraLocationShortcuts",
+  "version": "0.1.0",
+  "title": "Camera Location Shortcuts",
+  "author": "Gorfiend",
+  "factorio_version": "1.1",
+  "dependencies": [ "base >= 1.1" ],
+  "description": "Allows quick viewing of user customizable locations/entities."
+}

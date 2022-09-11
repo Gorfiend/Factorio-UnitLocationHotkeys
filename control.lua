@@ -1,5 +1,7 @@
 local mod_gui = require("mod-gui")
 
+local util = require("util")
+
 local zoom_constants = {
     max = 1.5,
     min = 0.01,
@@ -28,7 +30,6 @@ global.players = {}
 -- TODO surface?
 -- what zoom level to go to
 --- @field zoom double
---- @field mode defines.render_mode
 -- what the button for it looks like
 --- @field sprite string?
 --- @field caption string?
@@ -51,22 +52,6 @@ global.players = {}
 --- @field zoom_field LuaGuiElement
 
 
-
---- @param position MapPosition
---- @return string
-local function position_to_string(position)
-    return "x=" .. position.x .. " y=" .. position.y
-end
-
---- @param entity LuaEntity
---- @return LuaRecipe?
-local function get_entity_recipe(entity)
-    if entity.prototype.type == "assembling-machine" then
-        return entity.get_recipe()
-    elseif entity.prototype.type == "furnace" then
-        return entity.get_recipe() or entity.previous_recipe
-    end
-end
 
 --- @param player_data PlayerData
 local function rebuild_table(player_data)
@@ -168,37 +153,6 @@ local function init_player(player)
     init_gui(player, player_data.gui)
 end
 
---- @param slot ConfigSlot
---- @param player LuaPlayer
---- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
-local function fill_slot_from_selection(slot, player, selection)
-    if selection and #(selection.entities) > 0 then
-        local entity = selection.entities[1]
-        slot.entity = entity
-        slot.position = nil
-        local recipe = get_entity_recipe(entity)
-        if recipe then
-            slot.sprite = "recipe/" .. recipe.name
-        else
-            slot.sprite = "entity/" .. entity.name
-        end
-        if not slot.caption then
-            slot.caption = ""
-        end
-    else
-        local position = player.position
-        if selection then
-            position = selection.area.left_top
-        end
-        slot.position = position
-        slot.entity = nil
-        slot.sprite = "item/radar"
-        if not slot.caption then
-            slot.caption = position_to_string(position)
-        end
-    end
-end
-
 --- @param player LuaPlayer
 --- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
 local function add_shortcut(player, selection)
@@ -209,9 +163,8 @@ local function add_shortcut(player, selection)
     local config_slot = {}
     -- would really like to get the current player camera zoom/position, but can't...
     config_slot.zoom = zoom_constants.default
-    config_slot.mode = defines.render_mode.chart_zoomed_in
 
-    fill_slot_from_selection(config_slot, player, selection)
+    util.fill_slot_from_selection(config_slot, player, selection)
 
 
     table.insert(player_data.config, config_slot)
@@ -321,14 +274,14 @@ local function refresh_edit_window(player)
     end
 
     if slot_data.position then
-        edit_window_data.location_label.caption = position_to_string(slot_data.position)
+        edit_window_data.location_label.caption = util.position_to_string(slot_data.position)
     elseif slot_data.entity and slot_data.entity.valid then
         if slot_data.entity.entity_label then
             edit_window_data.location_label.caption = { "", slot_data.entity.entity_label,
-                " (", position_to_string(slot_data.entity.position), ")" }
+                " (", util.position_to_string(slot_data.entity.position), ")" }
         else
             edit_window_data.location_label.caption = { "", slot_data.entity.localised_name,
-                " (", position_to_string(slot_data.entity.position), ")" }
+                " (", util.position_to_string(slot_data.entity.position), ")" }
         end
     else
         edit_window_data.location_label = nil
@@ -539,146 +492,160 @@ end
 -- GUI Event handlers
 
 script.on_event(defines.events.on_gui_click, function(e)
-    if e.element.name == "cls_expanded_button" then
-        local player_data = global.players[e.player_index]
-        player_data.gui.expanded = not player_data.gui.expanded
-        if player_data.gui.expanded then
-            player_data.gui.expanded_button.sprite = "utility/collapse"
-        else
-            player_data.gui.expanded_button.sprite = "utility/expand"
-        end
-        rebuild_table(player_data)
-    elseif e.element.name == "cls_add_shortcut_button" then
-        if e.shift then
-            add_shortcut(game.players[e.player_index])
-        else
-            local player = game.players[e.player_index]
+    util.checked_call(e, function()
+        if e.element.name == "cls_expanded_button" then
             local player_data = global.players[e.player_index]
-            if not player.cursor_stack then return end
-            close_edit_window(player_data)
-            if player.clear_cursor() then
-                player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+            player_data.gui.expanded = not player_data.gui.expanded
+            if player_data.gui.expanded then
+                player_data.gui.expanded_button.sprite = "utility/collapse"
+            else
+                player_data.gui.expanded_button.sprite = "utility/expand"
             end
-        end
-    elseif e.element.name == "cls_edit_window_close_button" then
-        local player_data = global.players[e.player_index]
-        close_edit_window(player_data)
-    elseif e.element.name == "cls_edit_window_location_button" then
-        local player = game.players[e.player_index]
-        if not player.cursor_stack then return end
-        if player.clear_cursor() then
-            player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
-        end
-    elseif e.element.name == "cls_edit_window_zoom_max_button" then
-        local player = game.players[e.player_index]
-        local player_data = global.players[e.player_index]
-        if not player_data.edit_slot_index then return end
-        get_editing_slot(player_data).zoom = zoom_constants.world_min
-        on_config_update(player)
-    elseif e.element.tags.cls_action == "go_to_location_button" then
-        --- @type number
-        local config_index = e.element.tags.index --[[@as number]]
-        if e.button == defines.mouse_button_type.left then
-            go_to_location_index(game.players[e.player_index], config_index, e.control)
-        elseif e.button == defines.mouse_button_type.right then
-            if e.alt then
+            rebuild_table(player_data)
+        elseif e.element.name == "cls_add_shortcut_button" then
+            if e.shift then
+                add_shortcut(game.players[e.player_index])
+            else
                 local player = game.players[e.player_index]
                 local player_data = global.players[e.player_index]
+                if not player.cursor_stack then return end
                 close_edit_window(player_data)
-                player_data.edit_slot_index = config_index
                 if player.clear_cursor() then
                     player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
                 end
-            elseif e.shift and e.control then
-                local player_data = global.players[e.player_index]
-                delete_config_index(player_data, config_index)
-            else
-                open_edit_window(game.players[e.player_index], config_index)
+            end
+        elseif e.element.name == "cls_edit_window_close_button" then
+            local player_data = global.players[e.player_index]
+            close_edit_window(player_data)
+        elseif e.element.name == "cls_edit_window_location_button" then
+            local player = game.players[e.player_index]
+            if not player.cursor_stack then return end
+            if player.clear_cursor() then
+                player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+            end
+        elseif e.element.name == "cls_edit_window_zoom_max_button" then
+            local player = game.players[e.player_index]
+            local player_data = global.players[e.player_index]
+            if not player_data.edit_slot_index then return end
+            get_editing_slot(player_data).zoom = zoom_constants.world_min
+            on_config_update(player)
+        elseif e.element.tags.cls_action == "go_to_location_button" then
+            --- @type number
+            local config_index = e.element.tags.index --[[@as number]]
+            if e.button == defines.mouse_button_type.left then
+                go_to_location_index(game.players[e.player_index], config_index, e.control)
+            elseif e.button == defines.mouse_button_type.right then
+                if e.alt then
+                    local player = game.players[e.player_index]
+                    local player_data = global.players[e.player_index]
+                    close_edit_window(player_data)
+                    player_data.edit_slot_index = config_index
+                    if player.clear_cursor() then
+                        player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+                    end
+                elseif e.shift and e.control then
+                    local player_data = global.players[e.player_index]
+                    delete_config_index(player_data, config_index)
+                else
+                    open_edit_window(game.players[e.player_index], config_index)
+                end
             end
         end
-    end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(e)
-    local player_data = global.players[e.player_index]
-    if not player_data then return end
-    if e.element.name == "cls_edit_window_name_field" then
-        get_editing_slot(player_data).caption = e.element.text
-        on_config_update(game.players[e.player_index])
-    end
+    util.checked_call(e, function()
+        local player_data = global.players[e.player_index]
+        if not player_data then return end
+        if e.element.name == "cls_edit_window_name_field" then
+            get_editing_slot(player_data).caption = e.element.text
+            on_config_update(game.players[e.player_index])
+        end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_confirmed, function(e)
-    local player_data = global.players[e.player_index]
-    if not player_data then return end
-    if e.element.name == "cls_edit_window_zoom_field" then
-        local zoom = tonumber(e.element.text)
-        if not zoom then return end
-        zoom = math.min(math.max(zoom, zoom_constants.min), zoom_constants.max)
-        get_editing_slot(player_data).zoom = zoom
-        on_config_update(game.players[e.player_index])
-    end
+    util.checked_call(e, function()
+        local player_data = global.players[e.player_index]
+        if not player_data then return end
+        if e.element.name == "cls_edit_window_zoom_field" then
+            local zoom = tonumber(e.element.text)
+            if not zoom then return end
+            zoom = math.min(math.max(zoom, zoom_constants.min), zoom_constants.max)
+            get_editing_slot(player_data).zoom = zoom
+            on_config_update(game.players[e.player_index])
+        end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_value_changed, function(e)
-    local player_data = global.players[e.player_index]
-    if not player_data then return end
-    if e.element.name == "cls_edit_window_zoom_slider" then
-        get_editing_slot(player_data).zoom = e.element.slider_value
-        on_config_update(game.players[e.player_index])
-    end
+    util.checked_call(e, function()
+        local player_data = global.players[e.player_index]
+        if not player_data then return end
+        if e.element.name == "cls_edit_window_zoom_slider" then
+            get_editing_slot(player_data).zoom = e.element.slider_value
+            on_config_update(game.players[e.player_index])
+        end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_elem_changed, function(e)
-    local player_data = global.players[e.player_index]
-    if not player_data then return end
-    if e.element.name == "cls_edit_window_entity_button" then
-        if e.element.elem_value then
-            get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
-            on_config_update(game.players[e.player_index])
-        end
-    elseif e.element.name == "cls_edit_window_recipe_button" then
-        if e.element.elem_value then
-            get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
-            on_config_update(game.players[e.player_index])
-        end
-    elseif e.element.name == "cls_edit_window_signal_button" then
-        local elem = e.element.elem_value
-        if elem then
-            local sprite
-            if elem.type == "virtual" then
-                sprite = "virtual-signal/" .. elem.name
-            else
-                sprite = elem.type .. "/" .. elem.name
+    util.checked_call(e, function()
+        local player_data = global.players[e.player_index]
+        if not player_data then return end
+        if e.element.name == "cls_edit_window_entity_button" then
+            if e.element.elem_value then
+                get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
+                on_config_update(game.players[e.player_index])
             end
-            get_editing_slot(player_data).sprite = sprite
-            on_config_update(game.players[e.player_index])
+        elseif e.element.name == "cls_edit_window_recipe_button" then
+            if e.element.elem_value then
+                get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
+                on_config_update(game.players[e.player_index])
+            end
+        elseif e.element.name == "cls_edit_window_signal_button" then
+            local elem = e.element.elem_value
+            if elem then
+                local sprite
+                if elem.type == "virtual" then
+                    sprite = "virtual-signal/" .. elem.name
+                else
+                    sprite = elem.type .. "/" .. elem.name
+                end
+                get_editing_slot(player_data).sprite = sprite
+                on_config_update(game.players[e.player_index])
+            end
         end
-    end
+    end)
 end)
 
 script.on_event(defines.events.on_gui_closed, function(e)
-    if e.element and e.element.name == "cls_edit_window_frame" then
-        close_edit_window(global.players[e.player_index])
-    end
+    util.checked_call(e, function()
+        if e.element and e.element.name == "cls_edit_window_frame" then
+            close_edit_window(global.players[e.player_index])
+        end
+    end)
 end)
 
 --- @param e EventData.on_player_selected_area|EventData.on_player_alt_selected_area
 local function on_selection(e)
-    local player_index = e.player_index
-    if e.item ~= "cls-location-selection-tool" or not player_index then return end
-    local player = game.players[player_index]
-    local player_data = global.players[player_index]
-    if player_data.edit_slot_index then
-        -- editing
-        local slot = get_editing_slot(player_data)
+    util.checked_call(e, function()
+        local player_index = e.player_index
+        if e.item ~= "cls-location-selection-tool" or not player_index then return end
+        local player = game.players[player_index]
+        local player_data = global.players[player_index]
+        if player_data.edit_slot_index then
+            -- editing
+            local slot = get_editing_slot(player_data)
 
-        fill_slot_from_selection(slot, player, e)
-        on_config_update(player)
-    else
-        -- create new
-        add_shortcut(game.players[player_index], e)
-    end
+            util.fill_slot_from_selection(slot, player, e)
+            on_config_update(player)
+        else
+            -- create new
+            add_shortcut(game.players[player_index], e)
+        end
+    end)
 end
 
 script.on_event(defines.events.on_player_selected_area, function(e)

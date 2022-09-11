@@ -28,3 +28,15 @@ data:extend({ controller,
         alt_entity_filter_mode = "whitelist",
     }
 })
+
+for i = 1, 10 do
+    data:extend({
+        {
+            type = 'custom-input',
+            name = 'cls-go-to-location-index-' .. i,
+            key_sequence = "ALT + " .. (i % 10),
+            action = 'lua',
+            enabled_while_spectating = true,
+        }
+    })
+end

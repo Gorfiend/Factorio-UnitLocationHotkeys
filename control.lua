@@ -5,6 +5,7 @@ local zoom_constants = {
     min = 0.01,
     step = 0.001,
     world_min = 0.3, -- Max zoom-out without going to map view
+    default = 0.5,
 }
 
 -- Table for each players data
@@ -17,6 +18,7 @@ global.players = {}
 --- @class PlayerData
 --- @field config ConfigSlot[]
 --- @field gui PlayerGuiConfig
+--- @field edit_slot_index integer? the config index being edited, or nil if no edit
 
 
 --- @class ConfigSlot
@@ -37,7 +39,6 @@ global.players = {}
 --- @field edit_window EditWindowConfig
 
 --- @class EditWindowConfig
---- @field slot_index integer
 --- @field frame LuaGuiElement
 --- @field name_field LuaGuiElement
 --- @field entity_button LuaGuiElement
@@ -53,16 +54,27 @@ local function rebuild_table(player_data)
     table.clear()
 
     for index, slot in pairs(player_data.config) do
+        --- @type string|LocalisedString
         local prefix = ""
-        if slot.caption and string.len(slot.caption) > 0 then
-            prefix = slot.caption .. "\n"
+        if slot.caption and slot.caption ~= "" then
+            prefix = slot.caption
+        elseif slot.entity and slot.entity.valid then
+            prefix = slot.entity.entity_label or slot.entity.localised_name
         end
-        table.add {
+        --- @type string|LocalisedString
+        local hotkey = ""
+        if (index <= 10) then
+            hotkey = { "", "(", { "camera-location-shortcuts-shortcut-tooltip-" .. index }, ")" }
+        end
+        local button = table.add {
             type = "sprite-button",
-            tooltip = prefix .. [["Click to go to this position/entity
-                    - Hold Control to pick a remote if the target is a spidertron
-                    Right-click to edit
-                    - Hold Alt to only edit the target position/entity"]],
+            tooltip = { "", prefix, "\n", "Click to go to this position/entity ", hotkey, "\n",
+                [[
+- Hold Control to pick a remote if the target is a spidertron
+Right-click to edit
+- Hold Alt to only edit the target position/entity
+- Hold Shift and Control to delete]],
+            },
             sprite = slot.sprite,
             number = index,
             tags = {
@@ -70,6 +82,21 @@ local function rebuild_table(player_data)
                 index = index,
             }
         }
+
+        if slot.entity and slot.entity.valid then
+            local c = slot.entity.color
+            if c then
+                c.a = 1
+                button.caption = "■"
+                button.style.font_color = c
+                button.style.clicked_font_color = c
+                button.style.hovered_font_color = c
+                button.style.vertical_align = "top"
+                button.style.horizontal_align = "left"
+                button.style.top_padding = 0
+                button.style.left_padding = 0
+            end
+        end
     end
 end
 
@@ -103,7 +130,7 @@ local function init_player(player)
 end
 
 --- @param player LuaPlayer
---- @param selection EventData.on_player_selected_area?
+--- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
 local function add_shortcut(player, selection)
     local player_data = global.players[player.index]
 
@@ -111,18 +138,16 @@ local function add_shortcut(player, selection)
     --- @type ConfigSlot
     local config_slot = {}
     -- would really like to get the current player camera zoom/position, but can't...
-    config_slot.zoom = zoom_constants.world_min
+    config_slot.zoom = zoom_constants.default
     config_slot.mode = defines.render_mode.chart_zoomed_in
 
 
-    if selection then
-        if #(selection.entities) > 0 then
-            --- @type LuaEntity
-            local entity = selection.entities[1]
-            config_slot.entity = entity
-            config_slot.sprite = "entity/" .. entity.name
-            config_slot.caption = entity.entity_label or entity.name
-        end
+    -- TODO pull this logic out and share it with the selection direct edit
+    if selection and #(selection.entities) > 0 then
+        local entity = selection.entities[1]
+        config_slot.entity = entity
+        config_slot.sprite = "entity/" .. entity.name
+        config_slot.caption = ""
     else
         local position = player.position
         if selection then
@@ -177,7 +202,7 @@ local function go_to_location(player, data, pick_remote)
         position = data.position
     elseif data.entity then
         if not data.entity.valid then
-            player.print(data.entity.name .. " is no longer valid!")
+            player.print("Associated entity is no longer valid!")
             return
         end
         position = data.entity.position
@@ -204,16 +229,16 @@ end
 --- @param player_data PlayerData
 --- @return ConfigSlot
 local function get_editing_slot(player_data)
-    return player_data.config[player_data.gui.edit_window.slot_index]
+    return player_data.config[player_data.edit_slot_index]
 end
 
----@param position MapPosition
----@return string
+--- @param position MapPosition
+--- @return string
 local function position_to_string(position)
     return "x=" .. position.x .. " y=" .. position.y
 end
 
----@param player LuaPlayer
+--- @param player LuaPlayer
 local function refresh_edit_window(player)
     local player_data = global.players[player.index]
     local edit_window_data = player_data.gui.edit_window
@@ -238,13 +263,13 @@ local function refresh_edit_window(player)
 
     if slot_data.position then
         edit_window_data.location_label.caption = position_to_string(slot_data.position)
-    elseif slot_data.entity then
+    elseif slot_data.entity and slot_data.entity.valid then
         if slot_data.entity.entity_label then
-            edit_window_data.location_label.caption = slot_data.entity.entity_label ..
-                " (" .. position_to_string(slot_data.entity.position) .. ")"
+            edit_window_data.location_label.caption = { "", slot_data.entity.entity_label,
+                " (", position_to_string(slot_data.entity.position), ")" }
         else
-            edit_window_data.location_label.caption = slot_data.entity.name ..
-                " (" .. position_to_string(slot_data.entity.position) .. ")"
+            edit_window_data.location_label.caption = { "", slot_data.entity.localised_name,
+                " (", position_to_string(slot_data.entity.position), ")" }
         end
     else
         edit_window_data.location_label = nil
@@ -254,14 +279,30 @@ local function refresh_edit_window(player)
     edit_window_data.zoom_slider.slider_value = slot_data.zoom
 
     go_to_location(player, slot_data) -- live preview of zoom level
-    rebuild_table(player_data)
+end
+
+--- @param player LuaPlayer
+local function on_config_update(player)
+    refresh_edit_window(player)
+    rebuild_table(global.players[player.index])
 end
 
 --- @param player_data PlayerData
 local function close_edit_window(player_data)
     if player_data.gui.edit_window then player_data.gui.edit_window.frame.destroy() end
+    player_data.edit_slot_index = nil
     player_data.gui.edit_window = nil
     player_data.gui.add_shortcut_button.enabled = true
+end
+
+--- @param player_data PlayerData
+--- @param index integer
+local function delete_config_index(player_data, index)
+    if player_data.edit_slot_index == index then
+        close_edit_window(player_data)
+    end
+    table.remove(player_data.config, index)
+    rebuild_table(player_data)
 end
 
 --- @param player LuaPlayer
@@ -270,11 +311,17 @@ local function open_edit_window(player, slot_index)
     local player_data = global.players[player.index]
     close_edit_window(player_data)
 
+    local slot = player_data.config[slot_index]
+    if slot.entity and not slot.entity.valid then
+        player.print("Associated entity is no longer valid!")
+        return
+    end
+
     player_data.gui.add_shortcut_button.enabled = false
 
     player_data.gui.edit_window = {}
     local edit_window_data = player_data.gui.edit_window
-    edit_window_data.slot_index = slot_index
+    player_data.edit_slot_index = slot_index
 
     edit_window_data.frame = player.gui.screen.add {
         type = "frame",
@@ -373,6 +420,13 @@ local function open_edit_window(player, slot_index)
         allow_decimal = true,
         allow_negative = false,
     }
+    edit_window_data.zoom_field.style.width = 60
+    edit_window_data.zoom_max_button = zoom_flow.add {
+        type = "button",
+        name = "cls_edit_window_zoom_max_button",
+        caption = "Max world zoom",
+        tooltip = "The most zoomed out possible without changing to map view",
+    }
 
     refresh_edit_window(player)
 end
@@ -388,19 +442,42 @@ script.on_event(defines.events.on_gui_click, function(e)
             local player_data = global.players[e.player_index]
             if not player.cursor_stack then return end
             close_edit_window(player_data)
-            player.clear_cursor()
-            player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+            if player.clear_cursor() then
+                player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+            end
         end
     elseif e.element.name == "cls_edit_window_location_button" then
         local player = game.players[e.player_index]
         if not player.cursor_stack then return end
-        player.clear_cursor()
-        player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+        if player.clear_cursor() then
+            player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+        end
+    elseif e.element.name == "cls_edit_window_zoom_max_button" then
+        local player = game.players[e.player_index]
+        local player_data = global.players[e.player_index]
+        if not player_data.edit_slot_index then return end
+        get_editing_slot(player_data).zoom = zoom_constants.world_min
+        on_config_update(player)
     elseif e.element.tags.cls_action == "go_to_location_button" then
+        --- @type number
+        local config_index = e.element.tags.index --[[@as number]]
         if e.button == defines.mouse_button_type.left then
-            go_to_location_index(game.players[e.player_index], e.element.tags.index--[[@as number]] , e.control)
-        else
-            open_edit_window(game.players[e.player_index], e.element.tags.index--[[@as number]] )
+            go_to_location_index(game.players[e.player_index], config_index, e.control)
+        elseif e.button == defines.mouse_button_type.right then
+            if e.alt then
+                local player = game.players[e.player_index]
+                local player_data = global.players[e.player_index]
+                close_edit_window(player_data)
+                player_data.edit_slot_index = config_index
+                if player.clear_cursor() then
+                    player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+                end
+            elseif e.shift and e.control then
+                local player_data = global.players[e.player_index]
+                delete_config_index(player_data, config_index)
+            else
+                open_edit_window(game.players[e.player_index], config_index)
+            end
         end
     end
 end)
@@ -410,7 +487,7 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
     if not player_data then return end
     if e.element.name == "cls_edit_window_name_field" then
         get_editing_slot(player_data).caption = e.element.text
-        refresh_edit_window(game.players[e.player_index])
+        on_config_update(game.players[e.player_index])
     end
 end)
 
@@ -422,7 +499,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
         if not zoom then return end
         zoom = math.min(math.max(zoom, zoom_constants.min), zoom_constants.max)
         get_editing_slot(player_data).zoom = zoom
-        refresh_edit_window(game.players[e.player_index])
+        on_config_update(game.players[e.player_index])
     end
 end)
 
@@ -431,7 +508,7 @@ script.on_event(defines.events.on_gui_value_changed, function(e)
     if not player_data then return end
     if e.element.name == "cls_edit_window_zoom_slider" then
         get_editing_slot(player_data).zoom = e.element.slider_value
-        refresh_edit_window(game.players[e.player_index])
+        on_config_update(game.players[e.player_index])
     end
 end)
 
@@ -439,11 +516,15 @@ script.on_event(defines.events.on_gui_elem_changed, function(e)
     local player_data = global.players[e.player_index]
     if not player_data then return end
     if e.element.name == "cls_edit_window_entity_button" then
-        get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
-        refresh_edit_window(game.players[e.player_index])
+        if e.element.elem_value then
+            get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
+            on_config_update(game.players[e.player_index])
+        end
     elseif e.element.name == "cls_edit_window_recipe_button" then
-        get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
-        refresh_edit_window(game.players[e.player_index])
+        if e.element.elem_value then
+            get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
+            on_config_update(game.players[e.player_index])
+        end
     end
 end)
 
@@ -453,29 +534,29 @@ script.on_event(defines.events.on_gui_closed, function(e)
     end
 end)
 
----@param e EventData.on_player_selected_area|EventData.on_player_alt_selected_area
+--- @param e EventData.on_player_selected_area|EventData.on_player_alt_selected_area
 local function on_selection(e)
     local player_index = e.player_index
     if e.item ~= "cls-location-selection-tool" or not player_index then return end
     local player = game.players[player_index]
     local player_data = global.players[player_index]
-    if player_data.gui.edit_window then
+    if player_data.edit_slot_index then
         -- editing
         local slot = get_editing_slot(player_data)
 
         if #(e.entities) > 0 then
             --- @type LuaEntity
             local entity = e.entities[1]
+            slot.position = nil
             slot.entity = entity
             slot.sprite = "entity/" .. entity.name
-            slot.caption = entity.entity_label
         else
             local position = e.area.left_top
+            slot.entity = nil
             slot.position = position
             slot.sprite = "item/radar"
-            slot.caption = "x=" .. position.x .. " y=" .. position.y
         end
-        refresh_edit_window(player)
+        on_config_update(player)
     else
         -- create new
         add_shortcut(game.players[player_index], e)
@@ -489,6 +570,22 @@ end)
 script.on_event(defines.events.on_player_alt_selected_area, function(e)
     on_selection(e)
 end)
+
+--- @param e CustomInputEvent
+local function on_keyboard_shortcut(e)
+    local _, _, capture = string.find(e.input_name, "cls%-go%-to%-location%-index%-(.+)")
+    local index = tonumber(capture)
+    local player = game.players[e.player_index]
+    local player_data = global.players[e.player_index]
+    if player_data and player_data.config[index] then
+        -- TODO make a user pref for whether to grab a remote?
+        go_to_location(player, player_data.config[index], true)
+    end
+end
+
+for i = 1, 10 do
+    script.on_event("cls-go-to-location-index-" .. i, on_keyboard_shortcut)
+end
 
 
 -- Other Event handlers

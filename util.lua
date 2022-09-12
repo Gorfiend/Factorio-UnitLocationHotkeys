@@ -17,6 +17,11 @@ function util.checked_call(e, func)
     end
 end
 
+--- @param player_data PlayerData
+--- @return ConfigSlot
+function util.get_editing_slot(player_data)
+    return player_data.config[player_data.edit_slot_index]
+end
 
 --- @param slot ConfigSlot
 --- @param player LuaPlayer

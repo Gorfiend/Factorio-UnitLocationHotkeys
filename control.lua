@@ -13,6 +13,7 @@ global.players = {}
 --- @field config ConfigSlot[]
 --- @field gui PlayerGuiConfig
 --- @field edit_slot_index integer? the config index being edited, or nil if no edit
+--- @field following_entity LuaEntity? the entity currently being followed
 
 
 --- @class ConfigSlot
@@ -83,6 +84,37 @@ local function do_pick_remote(player, entity)
 end
 
 --- @param player LuaPlayer
+--- @param player_data PlayerData
+local function player_stop_follow(player, player_data)
+    player_data.following_entity = nil
+    gui.update_following(player, player_data)
+    -- TODO remove on_tick handler when it's not needed
+end
+
+--- @param player LuaPlayer
+--- @param position MapPosition
+--- @param zoom double?
+local function go_to_location_position(player, position, zoom)
+    if not player or not position then return end
+
+    if (zoom) then
+        if zoom < constants.zoom.world_min then
+            player.open_map(position, zoom)
+        else
+            player.zoom_to_world(position, zoom)
+        end
+    else
+        if player.render_mode == defines.render_mode.chart then
+            player.open_map(position)
+        elseif player.render_mode == defines.render_mode.chart_zoomed_in then
+            player.zoom_to_world(position)
+        else -- Player left map view, so stop following
+            player_stop_follow(player, global.players[player.index])
+        end
+    end
+end
+
+--- @param player LuaPlayer
 --- @param data ConfigSlot
 --- @param pick_remote boolean?
 local function go_to_location(player, data, pick_remote)
@@ -104,11 +136,7 @@ local function go_to_location(player, data, pick_remote)
     end
     if position == nil then return end -- shouldn't happen...
 
-    if data.zoom < constants.zoom.world_min then
-        player.open_map(position, data.zoom)
-    else
-        player.zoom_to_world(position, data.zoom)
-    end
+    go_to_location_position(player, position, data.zoom)
 end
 
 --- @param player LuaPlayer
@@ -140,10 +168,41 @@ local function delete_config_index(player_data, index)
     gui.rebuild_table(player_data)
 end
 
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+--- @param index integer
+local function player_start_follow(player, player_data, index)
+    player_data.following_entity = nil -- Stop any previous follow
+
+    local entity = player_data.config[index].entity
+    player_data.following_entity = entity
+    player_data.following_tick = game.tick
+    gui.update_following(player, player_data)
+    -- TODO remove on_tick handler when it's not needed
+end
+
+local function on_tick_follow()
+    for _, player in pairs(game.players) do
+        local player_data = global.players[player.index]
+        if player_data.following_entity then
+            if player_data.following_entity.valid then
+                if player_data.following_tick < game.tick then
+                    go_to_location_position(player, player_data.following_entity.position, nil)
+                end
+            else
+                player_stop_follow(player, player_data)
+            end
+        end
+    end
+end
+
+script.on_event(defines.events.on_tick, on_tick_follow)
 
 -- GUI Event handlers
 
 script.on_event(defines.events.on_gui_click, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         if e.element.name == "cls_expanded_button" then
             local player_data = global.players[e.player_index]
@@ -151,9 +210,8 @@ script.on_event(defines.events.on_gui_click, function(e)
             gui.rebuild_table(player_data)
         elseif e.element.name == "cls_add_shortcut_button" then
             if e.shift then
-                add_shortcut(game.players[e.player_index])
+                add_shortcut(player)
             else
-                local player = game.players[e.player_index]
                 local player_data = global.players[e.player_index]
                 if not player.cursor_stack then return end
                 gui.close_edit_window(player_data)
@@ -165,36 +223,38 @@ script.on_event(defines.events.on_gui_click, function(e)
             local player_data = global.players[e.player_index]
             gui.close_edit_window(player_data)
         elseif e.element.name == "cls_edit_window_location_button" then
-            local player = game.players[e.player_index]
             if not player.cursor_stack then return end
             if player.clear_cursor() then
                 player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
             end
         elseif e.element.name == "cls_edit_window_zoom_max_button" then
-            local player = game.players[e.player_index]
             local player_data = global.players[e.player_index]
             if not player_data.edit_slot_index then return end
             util.get_editing_slot(player_data).zoom = constants.zoom.world_min
             on_config_update(player)
+        elseif e.element and e.element.name == "cls_follow_stop_button" then
+            player_stop_follow(player, global.players[e.player_index])
         elseif e.element.tags.cls_action == "go_to_location_button" then
             --- @type number
             local config_index = e.element.tags.index --[[@as number]]
+            local player_data = global.players[e.player_index]
             if e.button == defines.mouse_button_type.left then
-                go_to_location_index(game.players[e.player_index], config_index, e.control)
+                go_to_location_index(player, config_index, e.control)
+                if e.shift then
+                    player_start_follow(player, player_data, config_index)
+                else
+                    player_stop_follow(player, player_data)
+                end
             elseif e.button == defines.mouse_button_type.right then
                 if e.alt then
-                    local player = game.players[e.player_index]
-                    local player_data = global.players[e.player_index]
                     gui.close_edit_window(player_data)
                     player_data.edit_slot_index = config_index
                     if player.clear_cursor() then
                         player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
                     end
                 elseif e.shift and e.control then
-                    local player_data = global.players[e.player_index]
                     delete_config_index(player_data, config_index)
                 else
-                    local player = game.players[e.player_index]
                     gui.open_edit_window(player, config_index)
                     go_to_location_index(player, config_index)
                 end
@@ -204,17 +264,21 @@ script.on_event(defines.events.on_gui_click, function(e)
 end)
 
 script.on_event(defines.events.on_gui_text_changed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         local player_data = global.players[e.player_index]
         if not player_data then return end
         if e.element.name == "cls_edit_window_name_field" then
             util.get_editing_slot(player_data).caption = e.element.text
-            on_config_update(game.players[e.player_index])
+            on_config_update(player)
         end
     end)
 end)
 
 script.on_event(defines.events.on_gui_confirmed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         local player_data = global.players[e.player_index]
         if not player_data then return end
@@ -223,35 +287,39 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
             if not zoom then return end
             zoom = math.min(math.max(zoom, constants.zoom.min), constants.zoom.max)
             util.get_editing_slot(player_data).zoom = zoom
-            on_config_update(game.players[e.player_index])
+            on_config_update(player)
         end
     end)
 end)
 
 script.on_event(defines.events.on_gui_value_changed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         local player_data = global.players[e.player_index]
         if not player_data then return end
         if e.element.name == "cls_edit_window_zoom_slider" then
             util.get_editing_slot(player_data).zoom = e.element.slider_value
-            on_config_update(game.players[e.player_index])
+            on_config_update(player)
         end
     end)
 end)
 
 script.on_event(defines.events.on_gui_elem_changed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         local player_data = global.players[e.player_index]
         if not player_data then return end
         if e.element.name == "cls_edit_window_entity_button" then
             if e.element.elem_value then
                 util.get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
-                on_config_update(game.players[e.player_index])
+                on_config_update(player)
             end
         elseif e.element.name == "cls_edit_window_recipe_button" then
             if e.element.elem_value then
                 util.get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
-                on_config_update(game.players[e.player_index])
+                on_config_update(player)
             end
         elseif e.element.name == "cls_edit_window_signal_button" then
             local elem = e.element.elem_value
@@ -263,7 +331,7 @@ script.on_event(defines.events.on_gui_elem_changed, function(e)
                     sprite = elem.type .. "/" .. elem.name
                 end
                 util.get_editing_slot(player_data).sprite = sprite
-                on_config_update(game.players[e.player_index])
+                on_config_update(player)
             end
         end
     end)
@@ -273,16 +341,21 @@ script.on_event(defines.events.on_gui_closed, function(e)
     util.checked_call(e, function()
         if e.element and e.element.name == "cls_edit_window_frame" then
             gui.close_edit_window(global.players[e.player_index])
+        elseif e.element and e.element.name == "cls_follow_window_frame" then
+            local player = game.get_player(e.player_index)
+            if not player then return end
+            player_stop_follow(player, global.players[e.player_index])
         end
     end)
 end)
 
 --- @param e EventData.on_player_selected_area|EventData.on_player_alt_selected_area
 local function on_selection(e)
+    if e.item ~= "cls-location-selection-tool" then return end
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         local player_index = e.player_index
-        if e.item ~= "cls-location-selection-tool" or not player_index then return end
-        local player = game.players[player_index]
         local player_data = global.players[player_index]
         if player_data.edit_slot_index then
             -- editing
@@ -292,7 +365,7 @@ local function on_selection(e)
             on_config_update(player)
         else
             -- create new
-            add_shortcut(game.players[player_index], e)
+            add_shortcut(player, e)
         end
     end)
 end
@@ -309,9 +382,9 @@ end)
 local function on_keyboard_shortcut(e)
     local _, _, capture = string.find(e.input_name, "cls%-go%-to%-location%-index%-(.+)")
     local index = tonumber(capture)
-    local player = game.players[e.player_index]
+    local player = game.get_player(e.player_index)
     local player_data = global.players[e.player_index]
-    if player_data and player_data.config[index] then
+    if player and player_data and player_data.config[index] then
         -- TODO make a user pref for whether to grab a remote?
         go_to_location(player, player_data.config[index], true)
     end
@@ -325,7 +398,9 @@ end
 -- Other Event handlers
 
 script.on_event(defines.events.on_player_joined_game, function(e)
-    init_player(game.players[e.player_index])
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    init_player(player)
 end)
 
 script.on_event(defines.events.on_player_removed, function(event)

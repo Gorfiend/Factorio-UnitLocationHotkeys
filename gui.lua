@@ -12,6 +12,7 @@ local gui = {}
 --- @field frame LuaGuiElement
 --- @field add_shortcut_button LuaGuiElement?
 --- @field edit_window EditWindowConfig
+--- @field following_frame LuaGuiElement?
 
 
 --- @class EditWindowConfig
@@ -367,6 +368,50 @@ function gui.refresh_edit_window(player)
 
     edit_window_data.zoom_field.text = tostring(slot_data.zoom)
     edit_window_data.zoom_slider.slider_value = slot_data.zoom
+end
+
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+function gui.update_following(player, player_data)
+    if player_data.following_entity then
+        if not player_data.gui.following_frame then
+            player_data.gui.following_frame = player.gui.screen.add {
+                type = "frame",
+                name = "cls_follow_window_frame",
+            }
+        else
+            player_data.gui.following_frame.clear()
+        end
+        player_data.gui.following_frame.style.padding = 4
+        local flow = player_data.gui.following_frame.add {
+            type = "flow",
+            direction = "horizontal",
+        }
+        flow.style.vertical_align = "center"
+
+        flow.add {
+            type = "label",
+            caption = { "", "Following: ", player_data.following_entity.localised_name, " ",
+                player_data.following_entity.entity_label }
+        }
+        local button = flow.add {
+            type = "sprite-button",
+            name = "cls_follow_stop_button",
+            tooltip = "Stop following",
+            style = "tool_button",
+            sprite = "utility/deconstruction_mark",
+        }
+        button.style.padding = 0
+
+        player.opened = player_data.gui.following_frame
+
+        player_data.gui.following_frame.location = { x = player.display_resolution.width / 3, y = 50 }
+    else
+        if player_data.gui.following_frame then
+            player_data.gui.following_frame.destroy()
+            player_data.gui.following_frame = nil
+        end
+    end
 end
 
 return gui

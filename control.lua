@@ -417,6 +417,20 @@ for i = 1, 10 do
     script.on_event("cls-go-to-location-index-" .. i, on_keyboard_shortcut)
 end
 
+local function on_input_move(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    local player_data = global.players[e.player_index]
+    if player_data.following_entity then
+        player_stop_follow(player, player_data)
+    end
+end
+
+script.on_event("cls-follow-move-up", on_input_move)
+script.on_event("cls-follow-move-down", on_input_move)
+script.on_event("cls-follow-move-left", on_input_move)
+script.on_event("cls-follow-move-right", on_input_move)
+
 
 -- Other Event handlers
 

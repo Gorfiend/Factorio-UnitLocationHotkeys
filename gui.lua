@@ -444,8 +444,6 @@ function gui.update_following(player, player_data)
         }
         button.style.padding = 0
 
-        player.opened = player_data.gui.following_frame
-
         player_data.gui.following_frame.location = { x = player.display_resolution.width / 3, y = 50 }
     else
         if player_data.gui.following_frame then

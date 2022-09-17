@@ -40,3 +40,35 @@ for i = 1, 10 do
         }
     })
 end
+
+
+data:extend({ controller,
+    {
+        type = "custom-input",
+        name = "cls-follow-move-up",
+        key_sequence = "",
+        linked_game_control = "move-up",
+        action = "lua",
+    },
+    {
+        type = "custom-input",
+        name = "cls-follow-move-down",
+        key_sequence = "",
+        linked_game_control = "move-down",
+        action = "lua",
+    },
+    {
+        type = "custom-input",
+        name = "cls-follow-move-left",
+        key_sequence = "",
+        linked_game_control = "move-left",
+        action = "lua",
+    },
+    {
+        type = "custom-input",
+        name = "cls-follow-move-right",
+        key_sequence = "",
+        linked_game_control = "move-right",
+        action = "lua",
+    },
+})

@@ -5,8 +5,12 @@ local gui = require("gui")
 -- Table for each players data
 --- @class GlobalData
 --- @field players PlayerData[]
+--- @field listeners_added boolean
 global = {}
 global.players = {}
+global.listeners_added = false
+
+local events = {}
 
 
 --- @class PlayerData
@@ -89,7 +93,7 @@ end
 local function player_stop_follow(player, player_data)
     player_data.following_entity = nil
     gui.update_following(player, player_data)
-    -- TODO remove on_tick handler when it's not needed
+    events.update_follow_listeners()
 end
 
 --- @param player LuaPlayer
@@ -153,17 +157,20 @@ local function on_config_update(player)
     local player_data = global.players[player.index]
     gui.rebuild_table(player_data)
 
-    local slot = util.get_editing_slot(player_data)
-    if slot then
-        go_to_location(player, slot) -- live preview of zoom level
+    if player_data.edit_slot_index then
+        local slot = util.get_editing_slot(player_data)
+        if slot then
+            go_to_location(player, slot) -- live preview of zoom level
+        end
     end
 end
 
+--- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param index integer
-local function delete_config_index(player_data, index)
+local function delete_config_index(player, player_data, index)
     if player_data.edit_slot_index == index then
-        gui.close_edit_window(player_data)
+        gui.close_edit_window(player, player_data)
     end
     table.remove(player_data.config, index)
     gui.rebuild_table(player_data)
@@ -179,7 +186,7 @@ local function player_start_follow(player, player_data, index)
     player_data.following_entity = entity
     player_data.following_tick = game.tick
     gui.update_following(player, player_data)
-    -- TODO remove on_tick handler when it's not needed
+    events.update_follow_listeners()
 end
 
 local function on_tick_follow()
@@ -197,8 +204,6 @@ local function on_tick_follow()
     end
 end
 
-script.on_event(defines.events.on_tick, on_tick_follow)
-
 -- GUI Event handlers
 
 script.on_event(defines.events.on_gui_click, function(e)
@@ -215,14 +220,14 @@ script.on_event(defines.events.on_gui_click, function(e)
             else
                 local player_data = global.players[e.player_index]
                 if not player.cursor_stack then return end
-                gui.close_edit_window(player_data)
+                gui.close_edit_window(player, player_data)
                 if player.clear_cursor() then
                     player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
                 end
             end
         elseif e.element.name == "cls_edit_window_close_button" then
             local player_data = global.players[e.player_index]
-            gui.close_edit_window(player_data)
+            gui.close_edit_window(player, player_data)
         elseif e.element.name == "cls_edit_window_location_button" then
             if not player.cursor_stack then return end
             if player.clear_cursor() then
@@ -240,6 +245,7 @@ script.on_event(defines.events.on_gui_click, function(e)
             local config_index = e.element.tags.index --[[@as number]]
             local player_data = global.players[e.player_index]
             if e.button == defines.mouse_button_type.left then
+                gui.close_edit_window(player, player_data)
                 go_to_location_index(player, config_index, e.control)
                 if e.shift then
                     player_start_follow(player, player_data, config_index)
@@ -247,15 +253,10 @@ script.on_event(defines.events.on_gui_click, function(e)
                     player_stop_follow(player, player_data)
                 end
             elseif e.button == defines.mouse_button_type.right then
-                if e.alt then
-                    gui.close_edit_window(player_data)
-                    player_data.edit_slot_index = config_index
-                    if player.clear_cursor() then
-                        player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
-                    end
-                elseif e.shift and e.control then
-                    delete_config_index(player_data, config_index)
+                if e.control and e.alt then
+                    delete_config_index(player, player_data, config_index)
                 else
+                    player_stop_follow(player, player_data)
                     gui.open_edit_window(player, config_index)
                     go_to_location_index(player, config_index)
                 end
@@ -361,12 +362,12 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(e)
 end)
 
 script.on_event(defines.events.on_gui_closed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
     util.checked_call(e, function()
         if e.element and e.element.name == "cls_edit_window_frame" then
-            gui.close_edit_window(global.players[e.player_index])
+            gui.close_edit_window(player, global.players[e.player_index])
         elseif e.element and e.element.name == "cls_follow_window_frame" then
-            local player = game.get_player(e.player_index)
-            if not player then return end
             player_stop_follow(player, global.players[e.player_index])
         end
     end)
@@ -408,6 +409,7 @@ local function on_keyboard_shortcut(e)
     local player = game.get_player(e.player_index)
     local player_data = global.players[e.player_index]
     if player and player_data and player_data.config[index] then
+        player_stop_follow(player, player_data)
         -- TODO make a user pref for whether to grab a remote?
         go_to_location(player, player_data.config[index], true)
     end
@@ -426,10 +428,45 @@ local function on_input_move(e)
     end
 end
 
-script.on_event("cls-follow-move-up", on_input_move)
-script.on_event("cls-follow-move-down", on_input_move)
-script.on_event("cls-follow-move-left", on_input_move)
-script.on_event("cls-follow-move-right", on_input_move)
+
+function events.register_follow_listeners()
+    script.on_event("cls-follow-move-up", on_input_move)
+    script.on_event("cls-follow-move-down", on_input_move)
+    script.on_event("cls-follow-move-left", on_input_move)
+    script.on_event("cls-follow-move-right", on_input_move)
+
+    script.on_event(defines.events.on_tick, on_tick_follow)
+end
+
+function events.unregister_follow_listeners()
+    script.on_event("cls-follow-move-up", nil)
+    script.on_event("cls-follow-move-down", nil)
+    script.on_event("cls-follow-move-left", nil)
+    script.on_event("cls-follow-move-right", nil)
+
+    script.on_event(defines.events.on_tick, nil)
+end
+
+function events.update_follow_listeners()
+    local need_added = false
+    for index, player_data in pairs(global.players) do
+        if player_data.following_entity then
+            local player = game.get_player(index)
+            if player and player.connected then
+                need_added = true
+                break
+            end
+        end
+    end
+    if global.listeners_added ~= need_added then
+        global.listeners_added = need_added
+        if need_added then
+            events.register_follow_listeners()
+        else
+            events.unregister_follow_listeners()
+        end
+    end
+end
 
 
 -- Other Event handlers
@@ -447,5 +484,11 @@ end)
 script.on_init(function()
     for _, player in pairs(game.players) do
         init_player(player)
+    end
+end)
+
+script.on_load(function ()
+    if global.listeners_added then
+        events.register_follow_listeners()
     end
 end)

@@ -98,9 +98,10 @@ function gui.rebuild_table(player_data)
             tooltip = { "", prefix, "\n", "Click to go to this position/entity ", hotkey, "\n",
                 [[
 - Hold Control to pick a remote if the target is a spidertron
+- Hold Shift to follow the entity
 Right-click to edit
-- Hold Alt to quick edit the target position/entity
-- Hold Shift and Control to delete]],
+- Hold Shift to quick edit the target position/entity
+- Hold Control and Alt to delete]],
             },
             sprite = slot.sprite,
             number = index,
@@ -141,7 +142,7 @@ end
 --- @param slot_index integer
 function gui.open_edit_window(player, slot_index)
     local player_data = global.players[player.index]
-    gui.close_edit_window(player_data)
+    gui.close_edit_window(player, player_data)
 
     local slot = player_data.config[slot_index]
     if slot.entity and not slot.entity.valid then
@@ -345,9 +346,16 @@ function gui.open_edit_window(player, slot_index)
     gui.refresh_edit_window(player)
 end
 
+--- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.close_edit_window(player_data)
-    if player_data.gui.edit_window then player_data.gui.edit_window.frame.destroy() end
+function gui.close_edit_window(player, player_data)
+    if player_data.gui.edit_window then
+        player_data.gui.edit_window.frame.destroy()
+        local stack = player.cursor_stack
+        if stack and stack.valid_for_read and stack.name == "cls-location-selection-tool" then
+            stack.clear()
+        end
+    end
     player_data.edit_slot_index = nil
     player_data.gui.edit_window = nil
     if player_data.gui.add_shortcut_button then
@@ -364,7 +372,7 @@ function gui.refresh_edit_window(player)
     local slot_data = util.get_editing_slot(player_data)
 
 
-    edit_window_data.title_label.caption = "Edit entry #" .. slot_index
+    edit_window_data.title_label.caption = "Edit entry #" .. player_data.edit_slot_index
 
     edit_window_data.drop_down_swap.selected_index = player_data.edit_slot_index --[[@as uint]]
     edit_window_data.drop_down_insert.selected_index = player_data.edit_slot_index --[[@as uint]]

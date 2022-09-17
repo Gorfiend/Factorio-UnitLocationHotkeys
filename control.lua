@@ -405,13 +405,15 @@ end)
 --- @param e CustomInputEvent
 local function on_keyboard_shortcut(e)
     local _, _, capture = string.find(e.input_name, "cls%-go%-to%-location%-index%-(.+)")
-    local index = tonumber(capture)
+    local index = tonumber(capture) --- @cast index integer
     local player = game.get_player(e.player_index)
     local player_data = global.players[e.player_index]
     if player and player_data and player_data.config[index] then
         player_stop_follow(player, player_data)
-        -- TODO make a user pref for whether to grab a remote?
-        go_to_location(player, player_data.config[index], true)
+        go_to_location(player, player_data.config[index], player.mod_settings["cls-hotkey-picks-remote"].value --[[@as boolean]])
+        if player.mod_settings["cls-hotkey-starts-follow"].value then
+            player_start_follow(player, player_data, index)
+        end
     end
 end
 

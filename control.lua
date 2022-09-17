@@ -338,6 +338,28 @@ script.on_event(defines.events.on_gui_elem_changed, function(e)
     end)
 end)
 
+script.on_event(defines.events.on_gui_selection_state_changed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    util.checked_call(e, function()
+        local player_data = global.players[e.player_index]
+        if not player_data then return end
+        local edit_index = player_data.edit_slot_index
+        if not edit_index then return end
+        local index = e.element.selected_index
+        if e.element.name == "cls_edit_window_index_swap" then
+            player_data.config[index], player_data.config[edit_index] = player_data.config[edit_index], player_data.config[index]
+            player_data.edit_slot_index = index
+            on_config_update(player)
+        elseif e.element.name == "cls_edit_window_index_insert" then
+            local slot = table.remove(player_data.config, edit_index)
+            table.insert(player_data.config, index, slot)
+            player_data.edit_slot_index = index
+            on_config_update(player)
+        end
+    end)
+end)
+
 script.on_event(defines.events.on_gui_closed, function(e)
     util.checked_call(e, function()
         if e.element and e.element.name == "cls_edit_window_frame" then

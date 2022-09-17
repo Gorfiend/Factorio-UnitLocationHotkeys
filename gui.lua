@@ -17,6 +17,9 @@ local gui = {}
 
 --- @class EditWindowConfig
 --- @field frame LuaGuiElement
+--- @field title_label LuaGuiElement
+--- @field drop_down_swap LuaGuiElement
+--- @field drop_down_insert LuaGuiElement
 --- @field name_field LuaGuiElement
 --- @field entity_button LuaGuiElement
 --- @field recipe_button LuaGuiElement
@@ -168,10 +171,9 @@ function gui.open_edit_window(player, slot_index)
     }
     titlebar.drag_target = edit_window_data.frame
 
-    titlebar.add {
+    edit_window_data.title_label = titlebar.add {
         type = "label",
         style = "frame_title",
-        caption = "Edit entry #" .. slot_index,
         ignored_by_interaction = true,
     }
 
@@ -206,6 +208,40 @@ function gui.open_edit_window(player, slot_index)
     controls_table.style.column_alignments[2] = "left"
     controls_table.style.horizontal_spacing = 12
     controls_table.style.vertical_spacing = 12
+
+
+    controls_table.add {
+        type = "label",
+        caption = "Change index:",
+    }
+    local index_flow = controls_table.add {
+        type = "flow",
+    }
+    index_flow.style.vertical_align = "center"
+    local index_items = {}
+    for i = 1, #(player_data.config) do
+        index_items[i] = tostring(i)
+    end
+    index_flow.add {
+        type = "label",
+        caption = "Swap",
+        tooltip = "Swap positions of this slot with the on at the selected index",
+    }
+    edit_window_data.drop_down_swap = index_flow.add {
+        type = "drop-down",
+        name = "cls_edit_window_index_swap",
+        items = index_items,
+    }
+    index_flow.add {
+        type = "label",
+        caption = "Insert",
+        tooltip = "Insert this slot at the selected index, shifting others over",
+    }
+    edit_window_data.drop_down_insert = index_flow.add {
+        type = "drop-down",
+        name = "cls_edit_window_index_insert",
+        items = index_items,
+    }
 
 
     controls_table.add {
@@ -327,6 +363,11 @@ function gui.refresh_edit_window(player)
 
     local slot_data = util.get_editing_slot(player_data)
 
+
+    edit_window_data.title_label.caption = "Edit entry #" .. slot_index
+
+    edit_window_data.drop_down_swap.selected_index = player_data.edit_slot_index --[[@as uint]]
+    edit_window_data.drop_down_insert.selected_index = player_data.edit_slot_index --[[@as uint]]
 
     edit_window_data.name_field.text = slot_data.caption or ""
 

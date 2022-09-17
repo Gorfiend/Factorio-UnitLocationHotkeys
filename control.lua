@@ -18,14 +18,14 @@ local events = {}
 --- @field gui PlayerGuiConfig
 --- @field edit_slot_index integer? the config index being edited, or nil if no edit
 --- @field following_entity LuaEntity? the entity currently being followed
---- @field following_tick uint? the tick entity following started
+--- @field following_tick uint? the tick entity following started (needed to make breaking out by closing map work right)
 
 
 --- @class ConfigSlot
 -- where to focus
+--- @field surface_index uint? If it's a position, what surface
 --- @field position MapPosition?
 --- @field entity LuaEntity?
--- TODO surface?
 -- what zoom level to go to
 --- @field zoom double
 -- what the button for it looks like
@@ -57,7 +57,7 @@ local function add_shortcut(player, selection)
     util.fill_slot_from_selection(config_slot, player, selection)
 
     table.insert(player_data.config, config_slot)
-    gui.rebuild_table(player_data)
+    gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
@@ -120,28 +120,38 @@ local function go_to_location_position(player, position, zoom)
 end
 
 --- @param player LuaPlayer
---- @param data ConfigSlot
+--- @param slot ConfigSlot
 --- @param pick_remote boolean?
-local function go_to_location(player, data, pick_remote)
-    if not player or not data then return end
+local function go_to_location(player, slot, pick_remote)
+    if not player or not slot then return end
     pick_remote = pick_remote or false
     --- @type MapPosition
     local position
-    if data.position then
-        position = data.position
-    elseif data.entity then
-        if not data.entity.valid then
-            player.print("Associated entity is no longer valid!")
+    if slot.position then
+        position = slot.position
+    elseif slot.entity then
+        if not slot.entity.valid then
+            player.print({ "gui.cls-entity-not-valid" })
             return
         end
-        position = data.entity.position
+        position = slot.entity.position
         if pick_remote then
-            do_pick_remote(player, data.entity)
+            do_pick_remote(player, slot.entity)
         end
     end
     if position == nil then return end -- shouldn't happen...
+    local surface = util.get_slot_surface(slot)
+    if surface then
+        if not surface.valid then
+            player.print({ "gui.cls-surface-not-valid" })
+            return
+        elseif player.surface ~= surface then
+            player.print({ "gui.cls-cant-go-to-other-surface", surface.name })
+            return
+        end
+    end
 
-    go_to_location_position(player, position, data.zoom)
+    go_to_location_position(player, position, slot.zoom)
 end
 
 --- @param player LuaPlayer
@@ -155,7 +165,7 @@ end
 local function on_config_update(player)
     gui.refresh_edit_window(player)
     local player_data = global.players[player.index]
-    gui.rebuild_table(player_data)
+    gui.rebuild_table(player, player_data)
 
     if player_data.edit_slot_index then
         local slot = util.get_editing_slot(player_data)
@@ -173,7 +183,7 @@ local function delete_config_index(player, player_data, index)
         gui.close_edit_window(player, player_data)
     end
     table.remove(player_data.config, index)
-    gui.rebuild_table(player_data)
+    gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
@@ -183,8 +193,13 @@ local function player_start_follow(player, player_data, index)
     player_data.following_entity = nil -- Stop any previous follow
 
     local entity = player_data.config[index].entity
-    player_data.following_entity = entity
-    player_data.following_tick = game.tick
+    if entity then
+        if player.surface ~= entity.surface then
+            return
+        end
+        player_data.following_entity = entity
+        player_data.following_tick = game.tick
+    end
     gui.update_following(player, player_data)
     events.update_follow_listeners()
 end
@@ -213,7 +228,7 @@ script.on_event(defines.events.on_gui_click, function(e)
         if e.element.name == "cls_expanded_button" then
             local player_data = global.players[e.player_index]
             player_data.gui.expanded = not player_data.gui.expanded
-            gui.rebuild_table(player_data)
+            gui.rebuild_table(player, player_data)
         elseif e.element.name == "cls_add_shortcut_button" then
             if e.shift then
                 add_shortcut(player)
@@ -244,6 +259,7 @@ script.on_event(defines.events.on_gui_click, function(e)
             --- @type number
             local config_index = e.element.tags.index --[[@as number]]
             local player_data = global.players[e.player_index]
+            gui.rebuild_table(player, player_data)
             if e.button == defines.mouse_button_type.left then
                 gui.close_edit_window(player, player_data)
                 go_to_location_index(player, config_index, e.control)
@@ -402,6 +418,13 @@ script.on_event(defines.events.on_player_alt_selected_area, function(e)
     on_selection(e)
 end)
 
+script.on_event(defines.events.on_player_changed_surface, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    local player_data = global.players[e.player_index]
+    gui.rebuild_table(player, player_data)
+end)
+
 --- @param e CustomInputEvent
 local function on_keyboard_shortcut(e)
     local _, _, capture = string.find(e.input_name, "cls%-go%-to%-location%-index%-(.+)")
@@ -414,6 +437,7 @@ local function on_keyboard_shortcut(e)
         if player.mod_settings["cls-hotkey-starts-follow"].value then
             player_start_follow(player, player_data, index)
         end
+        gui.rebuild_table(player, player_data)
     end
 end
 

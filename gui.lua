@@ -37,11 +37,12 @@ function gui.init_player_gui(player, player_data)
         style = mod_gui.frame_style,
         direction = "vertical",
     }
-    gui.rebuild_table(player_data)
+    gui.rebuild_table(player, player_data)
 end
 
+--- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.rebuild_table(player_data)
+function gui.rebuild_table(player, player_data)
     local gui_data = player_data.gui
     gui_data.frame.clear()
 
@@ -93,17 +94,35 @@ function gui.rebuild_table(player_data)
         if (index <= 10) then
             hotkey = { "", "(", { "camera-location-shortcuts-shortcut-tooltip-" .. index }, ")" }
         end
-        local button = table.add {
-            type = "sprite-button",
-            tooltip = { "", prefix, "\n", "Click to go to this position/entity ", hotkey, "\n",
-                [[
+        local style
+        local tooltip
+        local surface = util.get_slot_surface(slot)
+        if slot.entity and not slot.entity.valid then
+            style = "red_slot_button"
+            tooltip = { "", prefix, "\n", { "gui.cls-entity-not-valid" } }
+        elseif player.surface == surface then
+            style = "slot_button"
+            tooltip = { "", prefix, "\n", "Click to go to this position/entity ", hotkey, "\n", [[
 - Hold Control to pick a remote if the target is a spidertron
 - Hold Shift to follow the entity
 Right-click to edit
 - Hold Shift to quick edit the target position/entity
 - Hold Control and Alt to delete]],
-            },
+            }
+        else
+            if surface then
+                style = "yellow_slot_button"
+                tooltip = { "", prefix, "\n", { "gui.cls-on-other-surface", surface.name } }
+            else
+                style = "red_slot_button"
+                tooltip = { "", prefix, "\n", { "gui.cls-surface-not-valid" } }
+            end
+        end
+        local button = table.add {
+            type = "sprite-button",
+            tooltip = tooltip,
             sprite = slot.sprite,
+            style = style,
             number = index,
             tags = {
                 cls_action = "go_to_location_button",
@@ -146,7 +165,7 @@ function gui.open_edit_window(player, slot_index)
 
     local slot = player_data.config[slot_index]
     if slot.entity and not slot.entity.valid then
-        player.print("Associated entity is no longer valid!")
+        player.print({ "cls-entity-not-valid" })
         return
     end
 
@@ -342,7 +361,7 @@ function gui.open_edit_window(player, slot_index)
         tooltip = "Set to the most zoomed out possible without changing to map view",
     }
 
-    gui.rebuild_table(global.players[player.index])
+    gui.rebuild_table(player, global.players[player.index])
     gui.refresh_edit_window(player)
 end
 

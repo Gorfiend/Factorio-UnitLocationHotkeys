@@ -24,11 +24,26 @@ function util.get_editing_slot(player_data)
 end
 
 --- @param slot ConfigSlot
+--- @return LuaSurface?
+function util.get_slot_surface(slot)
+    if slot.entity then
+        if slot.entity.valid then
+            return slot.entity.surface
+        else
+            return nil
+        end
+    else
+        return game.get_surface(slot.surface_index)
+    end
+end
+
+--- @param slot ConfigSlot
 --- @param player LuaPlayer
 --- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
 function util.fill_slot_from_selection(slot, player, selection)
     if selection and #(selection.entities) > 0 then
         local entity = selection.entities[1]
+        slot.surface_index = nil
         slot.entity = entity
         slot.position = nil
         local recipe = util.get_entity_recipe(entity)
@@ -49,6 +64,7 @@ function util.fill_slot_from_selection(slot, player, selection)
         if selection then
             position = selection.area.left_top
         end
+        slot.surface_index = player.surface.index
         slot.position = position
         slot.entity = nil
         slot.sprite = "item/radar"

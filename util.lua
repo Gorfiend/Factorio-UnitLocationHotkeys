@@ -38,7 +38,11 @@ function util.fill_slot_from_selection(slot, player, selection)
             slot.sprite = "entity/" .. entity.name
         end
         if not slot.caption then
-            slot.caption = ""
+            if entity.entity_label then
+                slot.caption = entity.entity_label
+            else
+                slot.caption = ""
+            end
         end
     else
         local position = player.position

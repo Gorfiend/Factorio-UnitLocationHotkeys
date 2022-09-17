@@ -14,6 +14,7 @@ global.players = {}
 --- @field gui PlayerGuiConfig
 --- @field edit_slot_index integer? the config index being edited, or nil if no edit
 --- @field following_entity LuaEntity? the entity currently being followed
+--- @field following_tick uint? the tick entity following started
 
 
 --- @class ConfigSlot
@@ -182,7 +183,7 @@ local function player_start_follow(player, player_data, index)
 end
 
 local function on_tick_follow()
-    for _, player in pairs(game.players) do
+    for _, player in pairs(game.connected_players) do
         local player_data = global.players[player.index]
         if player_data.following_entity then
             if player_data.following_entity.valid then

@@ -27,6 +27,7 @@ local events = {}
 --- @field position MapPosition?
 --- @field entity LuaEntity?
 -- what zoom level to go to
+--- @field use_zoom boolean
 --- @field zoom double
 -- what the button for it looks like
 --- @field sprite string?
@@ -51,6 +52,7 @@ local function add_shortcut(player, selection)
 
     --- @type ConfigSlot
     local config_slot = {}
+    config_slot.use_zoom = false
     -- would really like to get the current player camera zoom/position, but can't...
     config_slot.zoom = constants.zoom.default
 
@@ -112,10 +114,8 @@ local function go_to_location_position(player, position, zoom)
     else
         if player.render_mode == defines.render_mode.chart then
             player.open_map(position)
-        elseif player.render_mode == defines.render_mode.chart_zoomed_in then
+        else -- chart zoomed in or normal
             player.zoom_to_world(position)
-        else -- Player left map view, so stop following
-            player_stop_follow(player, global.players[player.index])
         end
     end
 end
@@ -150,7 +150,7 @@ local function go_to_location(player, slot, pick_remote)
         end
     end
 
-    go_to_location_position(player, position, slot.zoom)
+    go_to_location_position(player, position, slot.use_zoom and slot.zoom or nil)
 end
 
 --- @param player LuaPlayer
@@ -206,6 +206,12 @@ end
 local function on_tick_follow()
     for _, player in pairs(game.connected_players) do
         local player_data = global.players[player.index]
+
+        -- Player left map mode, so stop following
+        if player.render_mode == defines.render_mode.game then
+            player_stop_follow(player, player_data)
+            return
+        end
         if player_data.following_entity then
             if player_data.following_entity.valid then
                 if player_data.following_tick < game.tick then
@@ -275,6 +281,17 @@ script.on_event(defines.events.on_gui_click, function(e)
                 go_to_location_index(player, config_index)
             end
         end
+    end
+end)
+
+script.on_event(defines.events.on_gui_checked_state_changed, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    local player_data = global.players[e.player_index]
+    if not player_data then return end
+    if e.element.name == "cls_edit_window_zoom_check" then
+        util.get_editing_slot(player_data).use_zoom = e.element.state
+        on_config_update(player)
     end
 end)
 

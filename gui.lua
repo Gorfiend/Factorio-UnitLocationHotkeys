@@ -24,6 +24,7 @@ local gui = {}
 --- @field entity_button LuaGuiElement
 --- @field recipe_button LuaGuiElement
 --- @field signal_button LuaGuiElement
+--- @field zoom_check LuaGuiElement
 --- @field zoom_slider LuaGuiElement
 --- @field zoom_field LuaGuiElement
 
@@ -331,8 +332,9 @@ function gui.open_edit_window(player, slot_index)
         caption = "Change..."
     }
 
-    controls_table.add {
-        type = "label",
+    edit_window_data.zoom_check = controls_table.add {
+        type = "checkbox",
+        name = "cls_edit_window_zoom_check",
         caption = "Zoom:",
     }
     local zoom_flow = controls_table.add {
@@ -434,8 +436,11 @@ function gui.refresh_edit_window(player)
         edit_window_data.location_label = nil
     end
 
+    edit_window_data.zoom_check.state = slot_data.use_zoom
     edit_window_data.zoom_field.text = tostring(slot_data.zoom)
     edit_window_data.zoom_slider.slider_value = slot_data.zoom
+    edit_window_data.zoom_field.enabled = slot_data.use_zoom
+    edit_window_data.zoom_slider.enabled = slot_data.use_zoom
 end
 
 --- @param player LuaPlayer

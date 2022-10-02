@@ -3,7 +3,7 @@ local mod_gui = require("mod-gui")
 local constants = require("constants")
 local util = require("util")
 
---- @class ClsGui
+--- @class UlhGui
 local gui = {}
 
 
@@ -52,7 +52,7 @@ function gui.rebuild_table(player, player_data)
     }
     local title_icon = toolbar.add {
         type = "sprite",
-        tooltip = "Camera Location Shortcuts",
+        tooltip = "Unit/Location Shortcuts",
         sprite = "item/radar",
     }
     title_icon.style.width = 24
@@ -62,7 +62,7 @@ function gui.rebuild_table(player, player_data)
         type = "sprite-button",
         tooltip = "Expand/collapse the shortcut panel",
         style = "frame_action_button",
-        name = "cls_expanded_button",
+        name = "ulh_expanded_button",
     }
     if gui_data.expanded then
         expanded_button.sprite = "utility/collapse"
@@ -93,14 +93,14 @@ function gui.rebuild_table(player, player_data)
         --- @type string|LocalisedString
         local hotkey = ""
         if (index <= 10) then
-            hotkey = { "", "(", { "camera-location-shortcuts-shortcut-tooltip-" .. index }, ")" }
+            hotkey = { "", "(", { "unit-location-hotkeys-shortcut-tooltip-" .. index }, ")" }
         end
         local style
         local tooltip
         local surface = util.get_slot_surface(slot)
         if slot.entity and not slot.entity.valid then
             style = "red_slot_button"
-            tooltip = { "", prefix, "\n", { "gui.cls-entity-not-valid" } }
+            tooltip = { "", prefix, "\n", { "gui.ulh-entity-not-valid" } }
         elseif player.surface == surface then
             style = "slot_button"
             tooltip = { "", prefix, "\n", "Click to go to this position/entity ", hotkey, "\n", [[
@@ -113,10 +113,10 @@ Right-click to edit
         else
             if surface then
                 style = "yellow_slot_button"
-                tooltip = { "", prefix, "\n", { "gui.cls-on-other-surface", surface.name } }
+                tooltip = { "", prefix, "\n", { "gui.ulh-on-other-surface", surface.name } }
             else
                 style = "red_slot_button"
-                tooltip = { "", prefix, "\n", { "gui.cls-surface-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
+                tooltip = { "", prefix, "\n", { "gui.ulh-surface-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
             end
         end
         local button = table.add {
@@ -126,7 +126,7 @@ Right-click to edit
             style = style,
             number = index,
             tags = {
-                cls_action = "go_to_location_button",
+                ulh_action = "go_to_location_button",
                 index = index,
             }
         }
@@ -152,7 +152,7 @@ Right-click to edit
         tooltip = "Add a new shortcut\nHold Shift to immediately add your current location",
         sprite = "utility/add",
         style = "tool_button", -- slot_button_in_shallow_frame    slot_button    slot_button_deep_frame
-        name = "cls_add_shortcut_button",
+        name = "ulh_add_shortcut_button",
     }
     gui_data.add_shortcut_button.style.margin = 6
     gui_data.add_shortcut_button.enabled = (player_data.edit_slot_index == nil)
@@ -166,7 +166,7 @@ function gui.open_edit_window(player, slot_index)
 
     local slot = player_data.config[slot_index]
     if slot.entity and not slot.entity.valid then
-        player.print({ "cls-entity-not-valid" })
+        player.print({ "ulh-entity-not-valid" })
         return
     end
 
@@ -180,7 +180,7 @@ function gui.open_edit_window(player, slot_index)
 
     edit_window_data.frame = player.gui.screen.add {
         type = "frame",
-        name = "cls_edit_window_frame",
+        name = "ulh_edit_window_frame",
         direction = "vertical",
     }
     edit_window_data.frame.location = { 200, 200 }
@@ -208,7 +208,7 @@ function gui.open_edit_window(player, slot_index)
     spacer.style.right_margin = 4
     titlebar.add {
         type = "sprite-button",
-        name = "cls_edit_window_close_button",
+        name = "ulh_edit_window_close_button",
         style = "frame_action_button",
         sprite = "utility/close_white",
         hovered_sprite = "utility/close_black",
@@ -250,7 +250,7 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.drop_down_swap = index_flow.add {
         type = "drop-down",
-        name = "cls_edit_window_index_swap",
+        name = "ulh_edit_window_index_swap",
         items = index_items,
     }
     index_flow.add {
@@ -260,7 +260,7 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.drop_down_insert = index_flow.add {
         type = "drop-down",
-        name = "cls_edit_window_index_insert",
+        name = "ulh_edit_window_index_insert",
         items = index_items,
     }
 
@@ -271,7 +271,7 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.name_field = controls_table.add {
         type = "textfield",
-        name = "cls_edit_window_name_field",
+        name = "ulh_edit_window_name_field",
     }
     edit_window_data.name_field.style.width = 300
 
@@ -290,7 +290,7 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.entity_button = icon_flow.add {
         type = "choose-elem-button",
-        name = "cls_edit_window_entity_button",
+        name = "ulh_edit_window_entity_button",
         elem_type = "entity",
         style = "slot_button_in_shallow_frame",
     }
@@ -300,7 +300,7 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.recipe_button = icon_flow.add {
         type = "choose-elem-button",
-        name = "cls_edit_window_recipe_button",
+        name = "ulh_edit_window_recipe_button",
         elem_type = "recipe",
         style = "slot_button_in_shallow_frame",
     }
@@ -310,7 +310,7 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.signal_button = icon_flow.add {
         type = "choose-elem-button",
-        name = "cls_edit_window_signal_button",
+        name = "ulh_edit_window_signal_button",
         elem_type = "signal",
         style = "slot_button_in_shallow_frame",
     }
@@ -328,13 +328,13 @@ function gui.open_edit_window(player, slot_index)
     }
     edit_window_data.location_button = location_flow.add {
         type = "button",
-        name = "cls_edit_window_location_button",
+        name = "ulh_edit_window_location_button",
         caption = "Change..."
     }
 
     edit_window_data.zoom_check = controls_table.add {
         type = "checkbox",
-        name = "cls_edit_window_zoom_check",
+        name = "ulh_edit_window_zoom_check",
         caption = "Zoom:",
     }
     local zoom_flow = controls_table.add {
@@ -343,14 +343,14 @@ function gui.open_edit_window(player, slot_index)
     zoom_flow.style.vertical_align = "center"
     edit_window_data.zoom_slider = zoom_flow.add {
         type = "slider",
-        name = "cls_edit_window_zoom_slider",
+        name = "ulh_edit_window_zoom_slider",
         minimum_value = constants.zoom.min,
         maximum_value = constants.zoom.max,
         value_step = constants.zoom.step,
     }
     edit_window_data.zoom_field = zoom_flow.add {
         type = "textfield",
-        name = "cls_edit_window_zoom_field",
+        name = "ulh_edit_window_zoom_field",
         numeric = true,
         allow_decimal = true,
         allow_negative = false,
@@ -358,7 +358,7 @@ function gui.open_edit_window(player, slot_index)
     edit_window_data.zoom_field.style.width = 60
     edit_window_data.zoom_max_button = zoom_flow.add {
         type = "button",
-        name = "cls_edit_window_zoom_max_button",
+        name = "ulh_edit_window_zoom_max_button",
         caption = "Max world zoom",
         tooltip = "Set to the most zoomed out possible without changing to map view",
     }
@@ -373,7 +373,7 @@ function gui.close_edit_window(player, player_data)
     if player_data.gui.edit_window then
         player_data.gui.edit_window.frame.destroy()
         local stack = player.cursor_stack
-        if stack and stack.valid_for_read and stack.name == "cls-location-selection-tool" then
+        if stack and stack.valid_for_read and stack.name == "ulh-location-selection-tool" then
             stack.clear()
         end
     end
@@ -450,7 +450,7 @@ function gui.update_following(player, player_data)
         if not player_data.gui.following_frame then
             player_data.gui.following_frame = player.gui.screen.add {
                 type = "frame",
-                name = "cls_follow_window_frame",
+                name = "ulh_follow_window_frame",
             }
         else
             player_data.gui.following_frame.clear()
@@ -469,7 +469,7 @@ function gui.update_following(player, player_data)
         }
         local button = flow.add {
             type = "sprite-button",
-            name = "cls_follow_stop_button",
+            name = "ulh_follow_stop_button",
             tooltip = "Stop following",
             style = "tool_button",
             sprite = "utility/deconstruction_mark",

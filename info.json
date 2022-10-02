@@ -1,9 +1,9 @@
 {
-  "name": "CameraLocationShortcuts",
-  "version": "0.1.0",
-  "title": "Camera Location Shortcuts",
+  "name": "UnitLocationHotkeys",
+  "version": "1.0.0",
+  "title": "Unit/Location Hotkeys",
   "author": "Gorfiend",
   "factorio_version": "1.1",
   "dependencies": [ "base >= 1.1" ],
-  "description": "Allows quick viewing of user customizable locations/entities."
+  "description": "Adds configurable shortcuts and hotkeys to center your view on a specific entity or location, similar to control groups in an RTS"
 }

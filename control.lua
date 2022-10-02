@@ -88,7 +88,7 @@ local function do_pick_remote(player, entity, pick_remote)
     -- otherwise create one
     -- TODO add a map option for requiring you to have a remote in your inventory
     if player.is_cursor_empty() then
-        player.cursor_stack.set_stack { name = "cls-spidertron-remote-oic", count = 1 }
+        player.cursor_stack.set_stack { name = "ulh-spidertron-remote-oic", count = 1 }
         player.cursor_stack.connected_entity = entity
     end
 end
@@ -132,7 +132,7 @@ local function go_to_location(player, slot, pick_remote)
         position = slot.position
     elseif slot.entity then
         if not slot.entity.valid then
-            player.print({ "gui.cls-entity-not-valid" })
+            player.print({ "gui.ulh-entity-not-valid" })
             return
         end
         position = slot.entity.position
@@ -142,10 +142,10 @@ local function go_to_location(player, slot, pick_remote)
     local surface = util.get_slot_surface(slot)
     if surface then
         if not surface.valid then
-            player.print({ "gui.cls-surface-not-valid" })
+            player.print({ "gui.ulh-surface-not-valid" })
             return
         elseif player.surface ~= surface then
-            player.print({ "gui.cls-cant-go-to-other-surface", surface.name })
+            player.print({ "gui.ulh-cant-go-to-other-surface", surface.name })
             return
         end
     end
@@ -229,11 +229,11 @@ end
 script.on_event(defines.events.on_gui_click, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    if e.element.name == "cls_expanded_button" then
+    if e.element.name == "ulh_expanded_button" then
         local player_data = global.players[e.player_index]
         player_data.gui.expanded = not player_data.gui.expanded
         gui.rebuild_table(player, player_data)
-    elseif e.element.name == "cls_add_shortcut_button" then
+    elseif e.element.name == "ulh_add_shortcut_button" then
         if e.shift then
             add_shortcut(player)
         else
@@ -241,25 +241,25 @@ script.on_event(defines.events.on_gui_click, function(e)
             if not player.cursor_stack then return end
             gui.close_edit_window(player, player_data)
             if player.clear_cursor() then
-                player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+                player.cursor_stack.set_stack { name = "ulh-location-selection-tool", count = 1 }
             end
         end
-    elseif e.element.name == "cls_edit_window_close_button" then
+    elseif e.element.name == "ulh_edit_window_close_button" then
         local player_data = global.players[e.player_index]
         gui.close_edit_window(player, player_data)
-    elseif e.element.name == "cls_edit_window_location_button" then
+    elseif e.element.name == "ulh_edit_window_location_button" then
         if not player.cursor_stack then return end
         if player.clear_cursor() then
-            player.cursor_stack.set_stack { name = "cls-location-selection-tool", count = 1 }
+            player.cursor_stack.set_stack { name = "ulh-location-selection-tool", count = 1 }
         end
-    elseif e.element.name == "cls_edit_window_zoom_max_button" then
+    elseif e.element.name == "ulh_edit_window_zoom_max_button" then
         local player_data = global.players[e.player_index]
         if not player_data.edit_slot_index then return end
         util.get_editing_slot(player_data).zoom = constants.zoom.world_min
         on_config_update(player)
-    elseif e.element and e.element.name == "cls_follow_stop_button" then
+    elseif e.element and e.element.name == "ulh_follow_stop_button" then
         player_stop_follow(player, global.players[e.player_index])
-    elseif e.element.tags.cls_action == "go_to_location_button" then
+    elseif e.element.tags.ulh_action == "go_to_location_button" then
         --- @type number
         local config_index = e.element.tags.index --[[@as number]]
         local player_data = global.players[e.player_index]
@@ -289,7 +289,7 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(e)
     if not player then return end
     local player_data = global.players[e.player_index]
     if not player_data then return end
-    if e.element.name == "cls_edit_window_zoom_check" then
+    if e.element.name == "ulh_edit_window_zoom_check" then
         util.get_editing_slot(player_data).use_zoom = e.element.state
         on_config_update(player)
     end
@@ -300,7 +300,7 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
     if not player then return end
     local player_data = global.players[e.player_index]
     if not player_data then return end
-    if e.element.name == "cls_edit_window_name_field" then
+    if e.element.name == "ulh_edit_window_name_field" then
         util.get_editing_slot(player_data).caption = e.element.text
         on_config_update(player)
     end
@@ -311,7 +311,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
     if not player then return end
     local player_data = global.players[e.player_index]
     if not player_data then return end
-    if e.element.name == "cls_edit_window_zoom_field" then
+    if e.element.name == "ulh_edit_window_zoom_field" then
         local zoom = tonumber(e.element.text)
         if not zoom then return end
         zoom = math.min(math.max(zoom, constants.zoom.min), constants.zoom.max)
@@ -325,7 +325,7 @@ script.on_event(defines.events.on_gui_value_changed, function(e)
     if not player then return end
     local player_data = global.players[e.player_index]
     if not player_data then return end
-    if e.element.name == "cls_edit_window_zoom_slider" then
+    if e.element.name == "ulh_edit_window_zoom_slider" then
         util.get_editing_slot(player_data).zoom = e.element.slider_value
         on_config_update(player)
     end
@@ -336,17 +336,17 @@ script.on_event(defines.events.on_gui_elem_changed, function(e)
     if not player then return end
     local player_data = global.players[e.player_index]
     if not player_data then return end
-    if e.element.name == "cls_edit_window_entity_button" then
+    if e.element.name == "ulh_edit_window_entity_button" then
         if e.element.elem_value then
             util.get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
             on_config_update(player)
         end
-    elseif e.element.name == "cls_edit_window_recipe_button" then
+    elseif e.element.name == "ulh_edit_window_recipe_button" then
         if e.element.elem_value then
             util.get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
             on_config_update(player)
         end
-    elseif e.element.name == "cls_edit_window_signal_button" then
+    elseif e.element.name == "ulh_edit_window_signal_button" then
         local elem = e.element.elem_value
         if elem then
             local sprite
@@ -369,11 +369,11 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(e)
     local edit_index = player_data.edit_slot_index
     if not edit_index then return end
     local index = e.element.selected_index
-    if e.element.name == "cls_edit_window_index_swap" then
+    if e.element.name == "ulh_edit_window_index_swap" then
         player_data.config[index], player_data.config[edit_index] = player_data.config[edit_index], player_data.config[index]
         player_data.edit_slot_index = index
         on_config_update(player)
-    elseif e.element.name == "cls_edit_window_index_insert" then
+    elseif e.element.name == "ulh_edit_window_index_insert" then
         local slot = table.remove(player_data.config, edit_index)
         table.insert(player_data.config, index, slot)
         player_data.edit_slot_index = index
@@ -384,16 +384,16 @@ end)
 script.on_event(defines.events.on_gui_closed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    if e.element and e.element.name == "cls_edit_window_frame" then
+    if e.element and e.element.name == "ulh_edit_window_frame" then
         gui.close_edit_window(player, global.players[e.player_index])
-    elseif e.element and e.element.name == "cls_follow_window_frame" then
+    elseif e.element and e.element.name == "ulh_follow_window_frame" then
         player_stop_follow(player, global.players[e.player_index])
     end
 end)
 
 --- @param e EventData.on_player_selected_area|EventData.on_player_alt_selected_area
 local function on_selection(e)
-    if e.item ~= "cls-location-selection-tool" then return end
+    if e.item ~= "ulh-location-selection-tool" then return end
     local player = game.get_player(e.player_index)
     if not player then return end
     local player_index = e.player_index
@@ -427,14 +427,14 @@ end)
 
 --- @param e CustomInputEvent
 local function on_keyboard_shortcut(e)
-    local _, _, capture = string.find(e.input_name, "cls%-go%-to%-location%-index%-(.+)")
+    local _, _, capture = string.find(e.input_name, "ulh%-go%-to%-location%-index%-(.+)")
     local index = tonumber(capture) --- @cast index integer
     local player = game.get_player(e.player_index)
     local player_data = global.players[e.player_index]
     if player and player_data and player_data.config[index] then
         player_stop_follow(player, player_data)
-        go_to_location(player, player_data.config[index], player.mod_settings["cls-hotkey-picks-remote"].value --[[@as string]])
-        if player.mod_settings["cls-hotkey-starts-follow"].value then
+        go_to_location(player, player_data.config[index], player.mod_settings["ulh-hotkey-picks-remote"].value --[[@as string]])
+        if player.mod_settings["ulh-hotkey-starts-follow"].value then
             player_start_follow(player, player_data, index)
         end
         gui.rebuild_table(player, player_data)
@@ -442,7 +442,7 @@ local function on_keyboard_shortcut(e)
 end
 
 for i = 1, 10 do
-    script.on_event("cls-go-to-location-index-" .. i, on_keyboard_shortcut)
+    script.on_event("ulh-go-to-location-index-" .. i, on_keyboard_shortcut)
 end
 
 local function on_input_move(e)
@@ -456,19 +456,19 @@ end
 
 
 function events.register_follow_listeners()
-    script.on_event("cls-follow-move-up", on_input_move)
-    script.on_event("cls-follow-move-down", on_input_move)
-    script.on_event("cls-follow-move-left", on_input_move)
-    script.on_event("cls-follow-move-right", on_input_move)
+    script.on_event("ulh-follow-move-up", on_input_move)
+    script.on_event("ulh-follow-move-down", on_input_move)
+    script.on_event("ulh-follow-move-left", on_input_move)
+    script.on_event("ulh-follow-move-right", on_input_move)
 
     script.on_event(defines.events.on_tick, on_tick_follow)
 end
 
 function events.unregister_follow_listeners()
-    script.on_event("cls-follow-move-up", nil)
-    script.on_event("cls-follow-move-down", nil)
-    script.on_event("cls-follow-move-left", nil)
-    script.on_event("cls-follow-move-right", nil)
+    script.on_event("ulh-follow-move-up", nil)
+    script.on_event("ulh-follow-move-down", nil)
+    script.on_event("ulh-follow-move-left", nil)
+    script.on_event("ulh-follow-move-right", nil)
 
     script.on_event(defines.events.on_tick, nil)
 end

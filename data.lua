@@ -1,6 +1,6 @@
 local controller = table.deepcopy(data.raw["spidertron-remote"]["spidertron-remote"])
 
-controller.name = "cls-spidertron-remote-oic"
+controller.name = "ulh-spidertron-remote-oic"
 controller.flags = controller.flags or {}
 table.insert(controller.flags, "hidden")
 table.insert(controller.flags, "only-in-cursor")
@@ -8,7 +8,7 @@ table.insert(controller.flags, "only-in-cursor")
 data:extend({ controller,
     {
         type = "selection-tool",
-        name = "cls-location-selection-tool",
+        name = "ulh-location-selection-tool",
         icon = "__core__/graphics/clone-icon.png",
         icon_size = 32,
         flags = { "hidden", "not-stackable", "only-in-cursor" },
@@ -33,7 +33,7 @@ for i = 1, 10 do
     data:extend({
         {
             type = 'custom-input',
-            name = 'cls-go-to-location-index-' .. i,
+            name = 'ulh-go-to-location-index-' .. i,
             key_sequence = "ALT + " .. (i % 10),
             action = 'lua',
             enabled_while_spectating = true,
@@ -45,28 +45,28 @@ end
 data:extend({ controller,
     {
         type = "custom-input",
-        name = "cls-follow-move-up",
+        name = "ulh-follow-move-up",
         key_sequence = "",
         linked_game_control = "move-up",
         action = "lua",
     },
     {
         type = "custom-input",
-        name = "cls-follow-move-down",
+        name = "ulh-follow-move-down",
         key_sequence = "",
         linked_game_control = "move-down",
         action = "lua",
     },
     {
         type = "custom-input",
-        name = "cls-follow-move-left",
+        name = "ulh-follow-move-left",
         key_sequence = "",
         linked_game_control = "move-left",
         action = "lua",
     },
     {
         type = "custom-input",
-        name = "cls-follow-move-right",
+        name = "ulh-follow-move-right",
         key_sequence = "",
         linked_game_control = "move-right",
         action = "lua",

@@ -62,10 +62,13 @@ end
 
 --- @param player LuaPlayer
 --- @param entity LuaEntity
-local function do_pick_remote(player, entity)
+--- @param pick_remote string
+local function do_pick_remote(player, entity, pick_remote)
+    if pick_remote == "never" then return end
     if entity.type ~= "spider-vehicle" then return end
     if not player.cursor_stack then return end
     if player.cursor_stack.connected_entity == entity then return end
+    if pick_remote == "cursor-empty" and player.cursor_stack.valid_for_read then return end
     if not player.clear_cursor() then return end
 
     local inv = player.get_main_inventory()
@@ -100,8 +103,6 @@ end
 --- @param position MapPosition
 --- @param zoom double?
 local function go_to_location_position(player, position, zoom)
-    if not player or not position then return end
-
     if (zoom) then
         if zoom < constants.zoom.world_min then
             player.open_map(position, zoom)
@@ -121,10 +122,10 @@ end
 
 --- @param player LuaPlayer
 --- @param slot ConfigSlot
---- @param pick_remote boolean?
+--- @param pick_remote string?
 local function go_to_location(player, slot, pick_remote)
     if not player or not slot then return end
-    pick_remote = pick_remote or false
+    pick_remote = pick_remote or "never"
     --- @type MapPosition
     local position
     if slot.position then
@@ -135,9 +136,7 @@ local function go_to_location(player, slot, pick_remote)
             return
         end
         position = slot.entity.position
-        if pick_remote then
-            do_pick_remote(player, slot.entity)
-        end
+        do_pick_remote(player, slot.entity, pick_remote)
     end
     if position == nil then return end -- shouldn't happen...
     local surface = util.get_slot_surface(slot)
@@ -156,7 +155,7 @@ end
 
 --- @param player LuaPlayer
 --- @param index integer
---- @param pick_remote boolean?
+--- @param pick_remote string?
 local function go_to_location_index(player, index, pick_remote)
     go_to_location(player, global.players[player.index].config[index], pick_remote)
 end
@@ -262,7 +261,7 @@ script.on_event(defines.events.on_gui_click, function(e)
             gui.rebuild_table(player, player_data)
             if e.button == defines.mouse_button_type.left then
                 gui.close_edit_window(player, player_data)
-                go_to_location_index(player, config_index, e.control)
+                go_to_location_index(player, config_index, e.control and "always" or "never")
                 if e.shift then
                     player_start_follow(player, player_data, config_index)
                 else
@@ -433,7 +432,7 @@ local function on_keyboard_shortcut(e)
     local player_data = global.players[e.player_index]
     if player and player_data and player_data.config[index] then
         player_stop_follow(player, player_data)
-        go_to_location(player, player_data.config[index], player.mod_settings["cls-hotkey-picks-remote"].value --[[@as boolean]])
+        go_to_location(player, player_data.config[index], player.mod_settings["cls-hotkey-picks-remote"].value --[[@as string]])
         if player.mod_settings["cls-hotkey-starts-follow"].value then
             player_start_follow(player, player_data, index)
         end

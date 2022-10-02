@@ -1,9 +1,10 @@
 data:extend({
     {
-        type = "bool-setting",
+        type = "string-setting",
         name = "cls-hotkey-picks-remote",
         setting_type = "runtime-per-user",
-        default_value = true,
+        default_value = "always",
+        allowed_values = { "always", "cursor-empty", "never" },
         order = "a",
     },
     {

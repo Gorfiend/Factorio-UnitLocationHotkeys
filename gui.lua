@@ -115,7 +115,7 @@ Right-click to edit
                 tooltip = { "", prefix, "\n", { "gui.cls-on-other-surface", surface.name } }
             else
                 style = "red_slot_button"
-                tooltip = { "", prefix, "\n", { "gui.cls-surface-not-valid" } }
+                tooltip = { "", prefix, "\n", { "gui.cls-surface-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
             end
         end
         local button = table.add {

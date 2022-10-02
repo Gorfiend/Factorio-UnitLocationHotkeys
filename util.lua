@@ -1,22 +1,5 @@
 local util = {}
 
---- @param e any
---- @param func fun()
-function util.checked_call(e, func)
-    local success, result = pcall(func)
-    if not success then
-        local error_message = "Unhandled error in Camera Location Shortcuts! Please report this to the author: " .. result
-        if e.player_index then
-            local player = game.players[e.player_index]
-            if player then
-                player.print(error_message)
-                return
-            end
-        end
-        game.print(error_message)
-    end
-end
-
 --- @param player_data PlayerData
 --- @return ConfigSlot
 function util.get_editing_slot(player_data)

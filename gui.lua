@@ -27,6 +27,7 @@ local gui = {}
 --- @field zoom_check LuaGuiElement
 --- @field zoom_slider LuaGuiElement
 --- @field zoom_field LuaGuiElement
+--- @field zoom_max_button LuaGuiElement
 
 
 --- @param player LuaPlayer
@@ -107,7 +108,6 @@ function gui.rebuild_table(player, player_data)
 - Hold Control to pick a remote if the target is a spidertron
 - Hold Shift to follow the entity
 Right-click to edit
-- Hold Shift to quick edit the target position/entity
 - Hold Control and Alt to delete]],
             }
         else
@@ -149,7 +149,7 @@ Right-click to edit
 
     gui_data.add_shortcut_button = table.add {
         type = "sprite-button",
-        tooltip = "Add a new shortcut\nHold Shift to immediately add your current location",
+        tooltip = { "gui.ulh-add-shortcut-tooltip", },
         sprite = "utility/add",
         style = "tool_button", -- slot_button_in_shallow_frame    slot_button    slot_button_deep_frame
         name = "ulh_add_shortcut_button",
@@ -336,6 +336,7 @@ function gui.open_edit_window(player, slot_index)
         type = "checkbox",
         name = "ulh_edit_window_zoom_check",
         caption = "Zoom:",
+        state = false,
     }
     local zoom_flow = controls_table.add {
         type = "flow",
@@ -441,6 +442,7 @@ function gui.refresh_edit_window(player)
     edit_window_data.zoom_slider.slider_value = slot_data.zoom
     edit_window_data.zoom_field.enabled = slot_data.use_zoom
     edit_window_data.zoom_slider.enabled = slot_data.use_zoom
+    edit_window_data.zoom_max_button.enabled = slot_data.use_zoom
 end
 
 --- @param player LuaPlayer

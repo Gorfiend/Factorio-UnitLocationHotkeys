@@ -206,16 +206,15 @@ end
 local function on_tick_follow()
     for _, player in pairs(game.connected_players) do
         local player_data = global.players[player.index]
-
-        -- Player left map mode, so stop following
-        if player.render_mode == defines.render_mode.game then
-            player_stop_follow(player, player_data)
-            return
-        end
         if player_data.following_entity then
             if player_data.following_entity.valid then
                 if player_data.following_tick < game.tick then
-                    go_to_location_position(player, player_data.following_entity.position, nil)
+                    -- Player left map mode, so stop following
+                    if player.render_mode == defines.render_mode.game then
+                        player_stop_follow(player, player_data)
+                    else
+                        go_to_location_position(player, player_data.following_entity.position, nil)
+                    end
                 end
             else
                 player_stop_follow(player, player_data)

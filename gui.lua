@@ -87,9 +87,9 @@ function gui.rebuild_table(player, player_data)
         --- @type string|LocalisedString
         local prefix = ""
         if slot.caption and slot.caption ~= "" then
-            prefix = slot.caption
+            prefix = slot.caption .. "\n"
         elseif slot.entity and slot.entity.valid then
-            prefix = slot.entity.entity_label or slot.entity.localised_name
+            prefix = { "", slot.entity.entity_label or slot.entity.localised_name, "\n" }
         end
         --- @type string|LocalisedString
         local hotkey = ""
@@ -101,10 +101,10 @@ function gui.rebuild_table(player, player_data)
         local surface = util.get_slot_surface(slot)
         if slot.entity and not slot.entity.valid then
             style = "red_slot_button"
-            tooltip = { "", prefix, "\n", { "gui.ulh-entity-not-valid" } }
+            tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
         elseif player.surface == surface then
             style = "slot_button"
-            tooltip = { "", prefix, "\n", "Click to go to this position/entity ", hotkey, "\n", [[
+            tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
 - Hold Control to pick a remote if the target is a spidertron
 - Hold Shift to follow the entity
 Right-click to edit
@@ -113,16 +113,15 @@ Right-click to edit
         else
             if surface then
                 style = "yellow_slot_button"
-                tooltip = { "", prefix, "\n", { "gui.ulh-on-other-surface", surface.name } }
+                tooltip = { "", prefix, { "gui.ulh-on-other-surface", surface.name } }
             else
                 style = "red_slot_button"
-                tooltip = { "", prefix, "\n", { "gui.ulh-surface-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
+                tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
             end
         end
         local button = table.add {
             type = "sprite-button",
             tooltip = tooltip,
-            sprite = slot.sprite,
             style = style,
             number = index,
             tags = {
@@ -130,6 +129,9 @@ Right-click to edit
                 index = index,
             }
         }
+        if game.is_valid_sprite_path(slot.sprite) then
+            button.sprite = slot.sprite
+        end
 
         if slot.entity and slot.entity.valid then
             local c = slot.entity.color
@@ -166,7 +168,7 @@ function gui.open_edit_window(player, slot_index)
 
     local slot = player_data.config[slot_index]
     if slot.entity and not slot.entity.valid then
-        player.print({ "ulh-entity-not-valid" })
+        player.print({ "gui.ulh-entity-not-valid" })
         return
     end
 

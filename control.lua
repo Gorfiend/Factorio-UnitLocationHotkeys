@@ -496,7 +496,7 @@ end
 
 -- Other Event handlers
 
-script.on_event(defines.events.on_player_joined_game, function(e)
+script.on_event(defines.events.on_player_created, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
     init_player(player)

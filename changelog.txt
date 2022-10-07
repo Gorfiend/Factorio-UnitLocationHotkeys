@@ -1,0 +1,7 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2022-10-07
+  Changes:
+    - Improve shortcuts for players/characters - will use the player color, and refresh the target entity on respawn/rejoin
+  Bugfixes:
+    - Fix bug where a new panel was added when loading/joining a multiplayer game.

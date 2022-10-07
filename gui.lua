@@ -100,8 +100,13 @@ function gui.rebuild_table(player, player_data)
         local tooltip
         local surface = util.get_slot_surface(slot)
         if slot.entity and not slot.entity.valid then
-            style = "red_slot_button"
-            tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
+            if slot.player and slot.player.valid then
+                style = "red_slot_button"
+                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "May need to wait for player to respawn or rejoin" }
+            else
+                style = "red_slot_button"
+                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
+            end
         elseif player.surface == surface then
             style = "slot_button"
             tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
@@ -133,19 +138,22 @@ Right-click to edit
             button.sprite = slot.sprite
         end
 
-        if slot.entity and slot.entity.valid then
-            local c = slot.entity.color
-            if c then
-                c.a = 1
-                button.caption = "■"
-                button.style.font_color = c
-                button.style.clicked_font_color = c
-                button.style.hovered_font_color = c
-                button.style.vertical_align = "top"
-                button.style.horizontal_align = "left"
-                button.style.top_padding = 0
-                button.style.left_padding = 0
-            end
+        local color = nil
+        if slot.player and slot.player.valid then
+            color = slot.player.color
+        elseif slot.entity and slot.entity.valid and slot.entity.color then
+            color = slot.entity.color
+        end
+        if color then
+            color.a = 1
+            button.caption = "■"
+            button.style.font_color = color
+            button.style.clicked_font_color = color
+            button.style.hovered_font_color = color
+            button.style.vertical_align = "top"
+            button.style.horizontal_align = "left"
+            button.style.top_padding = 0
+            button.style.left_padding = 0
         end
     end
 

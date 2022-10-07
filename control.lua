@@ -26,6 +26,7 @@ local events = {}
 --- @field surface_index uint? If it's a position, what surface
 --- @field position MapPosition?
 --- @field entity LuaEntity?
+--- @field player LuaPlayer?
 -- what zoom level to go to
 --- @field use_zoom boolean
 --- @field zoom double
@@ -170,6 +171,20 @@ local function on_config_update(player)
         local slot = util.get_editing_slot(player_data)
         if slot then
             go_to_location(player, slot) -- live preview of zoom level
+        end
+    end
+end
+
+--- @param updated_player LuaPlayer
+local function update_player_references(updated_player)
+    for player_index, player_data in pairs(global.players) do
+        for _, slot in pairs(player_data.config) do
+            if slot.player == updated_player then
+                slot.entity = updated_player.character
+                local player = game.get_player(player_index)
+                if not player then return end
+                gui.rebuild_table(player, player_data)
+            end
         end
     end
 end
@@ -502,8 +517,20 @@ script.on_event(defines.events.on_player_created, function(e)
     init_player(player)
 end)
 
-script.on_event(defines.events.on_player_removed, function(event)
-    global.players[event.player_index] = nil
+script.on_event(defines.events.on_player_removed, function(e)
+    global.players[e.player_index] = nil
+end)
+
+script.on_event(defines.events.on_player_joined_game, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    update_player_references(player)
+end)
+
+script.on_event(defines.events.on_player_respawned, function(e)
+    local player = game.get_player(e.player_index)
+    if not player then return end
+    update_player_references(player)
 end)
 
 script.on_init(function()

@@ -29,6 +29,9 @@ function util.fill_slot_from_selection(slot, player, selection)
         slot.surface_index = nil
         slot.entity = entity
         slot.position = nil
+        if entity.player then
+            slot.player = entity.player
+        end
         local recipe = util.get_entity_recipe(entity)
         if recipe then
             slot.sprite = "recipe/" .. recipe.name
@@ -38,6 +41,8 @@ function util.fill_slot_from_selection(slot, player, selection)
         if not slot.caption then
             if entity.entity_label then
                 slot.caption = entity.entity_label
+            elseif entity.player then
+                slot.caption = entity.player.name
             else
                 slot.caption = ""
             end

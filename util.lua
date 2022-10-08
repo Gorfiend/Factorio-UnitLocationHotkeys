@@ -26,10 +26,11 @@ end
 function util.fill_slot_from_selection(slot, player, selection)
     if selection and #(selection.entities) > 0 then
         local entity = selection.entities[1]
+        local is_character = entity.prototype.type == 'character'
         slot.surface_index = nil
         slot.entity = entity
         slot.position = nil
-        if entity.player then
+        if is_character and entity.player then
             slot.player = entity.player
         end
         local recipe = util.get_entity_recipe(entity)
@@ -41,7 +42,7 @@ function util.fill_slot_from_selection(slot, player, selection)
         if not slot.caption then
             if entity.entity_label then
                 slot.caption = entity.entity_label
-            elseif entity.player then
+            elseif is_character and entity.player then
                 slot.caption = entity.player.name
             else
                 slot.caption = ""

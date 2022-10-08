@@ -24,6 +24,7 @@ end
 --- @param player LuaPlayer
 --- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
 function util.fill_slot_from_selection(slot, player, selection)
+    slot.player = nil
     if selection and #(selection.entities) > 0 then
         local entity = selection.entities[1]
         local is_character = entity.prototype.type == 'character'

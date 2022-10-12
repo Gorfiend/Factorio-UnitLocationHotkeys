@@ -287,7 +287,7 @@ script.on_event(defines.events.on_gui_click, function(e)
                 player_stop_follow(player, player_data)
             end
         elseif e.button == defines.mouse_button_type.right then
-            if e.control and e.alt then
+            if e.control then
                 delete_config_index(player, player_data, config_index)
             else
                 player_stop_follow(player, player_data)
@@ -542,5 +542,17 @@ end)
 script.on_load(function ()
     if global.listeners_added then
         events.register_follow_listeners()
+    end
+end)
+
+script.on_configuration_changed(function(e)
+    -- Update everyone's table to use the new tooltip
+    if e.mod_changes["UnitLocationHotkeys"] ~= nil then
+        for player_index, player_data in pairs(global.players) do
+            local player = game.get_player(player_index)
+            if player then
+                gui.rebuild_table(player, player_data)
+            end
+        end
     end
 end)

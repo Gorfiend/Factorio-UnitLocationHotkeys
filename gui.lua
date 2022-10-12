@@ -105,7 +105,7 @@ function gui.rebuild_table(player, player_data)
                 tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "May need to wait for player to respawn or rejoin" }
             else
                 style = "red_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
+                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Right-click to delete" }
             end
         elseif player.surface == surface then
             style = "slot_button"
@@ -113,15 +113,15 @@ function gui.rebuild_table(player, player_data)
 - Hold Control to pick a remote if the target is a spidertron
 - Hold Shift to follow the entity
 Right-click to edit
-- Hold Control and Alt to delete]],
+- Hold Control to delete]],
             }
         else
             if surface then
                 style = "yellow_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-on-other-surface", surface.name } }
+                tooltip = { "", prefix, { "gui.ulh-on-other-surface", surface.name }, "\n", "Control + Right-click to delete" }
             else
                 style = "red_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Alt + Right-click to delete" }
+                tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Right-click to delete" }
             end
         end
         local button = table.add {

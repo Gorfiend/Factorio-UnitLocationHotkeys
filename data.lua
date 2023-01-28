@@ -72,3 +72,24 @@ data:extend({ controller,
         action = "lua",
     },
 })
+
+-- Taken from flib
+data.raw["gui-style"].default.ulh_selected_frame_action_button = {
+    type = "button_style",
+    parent = "frame_action_button",
+    default_font_color = _ENV.button_hovered_font_color,
+    default_graphical_set = {
+        base = { position = { 225, 17 }, corner_size = 8 },
+        shadow = { position = { 440, 24 }, corner_size = 8, draw_type = "outer" },
+    },
+    hovered_font_color = _ENV.button_hovered_font_color,
+    hovered_graphical_set = {
+        base = { position = { 369, 17 }, corner_size = 8 },
+        shadow = { position = { 440, 24 }, corner_size = 8, draw_type = "outer" },
+    },
+    clicked_font_color = _ENV.button_hovered_font_color,
+    clicked_graphical_set = {
+        base = { position = { 352, 17 }, corner_size = 8 },
+        shadow = { position = { 440, 24 }, corner_size = 8, draw_type = "outer" },
+    },
+}

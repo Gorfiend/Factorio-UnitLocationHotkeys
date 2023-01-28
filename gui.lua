@@ -9,6 +9,7 @@ local gui = {}
 
 --- @class PlayerGuiConfig
 --- @field expanded boolean
+--- @field labeled boolean
 --- @field frame LuaGuiElement
 --- @field add_shortcut_button LuaGuiElement?
 --- @field edit_window EditWindowConfig
@@ -59,6 +60,7 @@ function gui.rebuild_table(player, player_data)
     title_icon.style.width = 24
     title_icon.style.height = 24
     title_icon.style.stretch_image_to_widget_size = true
+
     local expanded_button = toolbar.add {
         type = "sprite-button",
         tooltip = "Expand/collapse the shortcut panel",
@@ -72,6 +74,17 @@ function gui.rebuild_table(player, player_data)
     end
 
     if not gui_data.expanded then return end
+
+    local label_button = toolbar.add {
+        type = "button",
+        caption = "T",
+        tooltip = "Show labels under buttons",
+        style = "frame_action_button",
+        name = "ulh_label_button",
+    }
+    if gui_data.labeled then
+        label_button.style = "ulh_selected_frame_action_button"
+    end
 
     local content = gui_data.frame.add {
         type = "frame",
@@ -102,7 +115,7 @@ function gui.rebuild_table(player, player_data)
         if slot.entity and not slot.entity.valid then
             if slot.player and slot.player.valid then
                 style = "red_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "May need to wait for player to respawn or rejoin" }
+                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "May need to wait for player to respawn or rejoin", "\n", "Control + Right-click to delete" }
             else
                 style = "red_slot_button"
                 tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Right-click to delete" }
@@ -124,7 +137,17 @@ Right-click to edit
                 tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Right-click to delete" }
             end
         end
-        local button = table.add {
+        local button_panel = table.add {
+            type = "flow",
+            direction = "vertical",
+        }
+        button_panel.style.vertical_spacing = 0
+        if gui_data.labeled then
+            button_panel.style.maximal_width = 60
+            button_panel.style.minimal_width = 60
+            button_panel.style.horizontal_align = "center"
+        end
+        local button = button_panel.add {
             type = "sprite-button",
             tooltip = tooltip,
             style = style,
@@ -154,6 +177,14 @@ Right-click to edit
             button.style.horizontal_align = "left"
             button.style.top_padding = 0
             button.style.left_padding = 0
+        end
+        if gui_data.labeled then
+            local label = button_panel.add {
+                type = "label",
+                caption = slot.caption,
+            }
+            -- Limit width. Buttons are 40x40, so this is a little wider.
+            label.style.maximal_width = 56
         end
     end
 

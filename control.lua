@@ -247,6 +247,10 @@ script.on_event(defines.events.on_gui_click, function(e)
         local player_data = global.players[e.player_index]
         player_data.gui.expanded = not player_data.gui.expanded
         gui.rebuild_table(player, player_data)
+    elseif e.element.name == "ulh_label_button" then
+        local player_data = global.players[e.player_index]
+        player_data.gui.labeled = not player_data.gui.labeled
+        gui.rebuild_table(player, player_data)
     elseif e.element.name == "ulh_add_shortcut_button" then
         if e.shift then
             add_shortcut(player)

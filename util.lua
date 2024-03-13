@@ -93,4 +93,15 @@ function util.player_can_view_surface(player, surface)
     return false
 end
 
+function util.update_slot_entity(slot)
+    -- Change the slot entity to be the cloned entity, if needed/possible
+    if slot.entity and not slot.entity.valid then
+        if slot.cloned_entity and slot.cloned_entity.valid then
+            slot.entity = slot.cloned_entity
+            slot.cloned_entity = nil
+        end
+    end
+end
+
+
 return util

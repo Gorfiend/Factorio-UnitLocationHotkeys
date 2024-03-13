@@ -107,6 +107,7 @@ function gui.rebuild_table(player, player_data)
     for index, slot in pairs(player_data.config) do
         --- @type string|LocalisedString
         local prefix = ""
+        util.update_slot_entity(slot)
         if slot.caption and slot.caption ~= "" then
             prefix = slot.caption .. "\n"
         elseif slot.entity and slot.entity.valid then

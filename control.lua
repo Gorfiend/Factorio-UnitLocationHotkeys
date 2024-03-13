@@ -26,6 +26,7 @@ local events = {}
 --- @field surface_index uint? If it's a position, what surface
 --- @field position MapPosition?
 --- @field entity LuaEntity?
+--- @field cloned_entity LuaEntity?
 --- @field player LuaPlayer?
 -- what zoom level to go to
 --- @field use_zoom boolean
@@ -132,6 +133,7 @@ local function go_to_location(player, slot, pick_remote)
     if slot.position then
         position = slot.position
     elseif slot.entity then
+        util.update_slot_entity(slot)
         if not slot.entity.valid then
             player.print({ "gui.ulh-entity-not-valid" })
             return
@@ -155,6 +157,12 @@ local function go_to_location(player, slot, pick_remote)
                 local zone = remote.call("space-exploration", "get_zone_from_surface_index", {
                     surface_index = surface.index,
                 })
+                if zone == nil then
+                    player.print("Can't go to this surface (spaceship?) - Unable to find surface")
+                    return
+                end
+                -- This opens the location in nav view, and not in the map - which prevents follow from working
+                -- Probably need to delay this stuff a tick so it happens after to make it work the same
                 remote.call("space-exploration", "remote_view_start", {
                     player = player,
                     zone_name = zone.name,
@@ -532,6 +540,18 @@ end
 
 
 -- Other Event handlers
+
+script.on_event(defines.events.on_entity_cloned, function(e)
+    -- This is likely bad performance when theres a lot of slots/entities being cloned
+    -- Maybe can make a map of entities that are being followed the first time this is called?
+    for _, player_data in pairs(global.players) do
+        for _, slot in pairs(player_data.config) do
+            if slot.entity == e.source then
+                slot.cloned_entity = e.destination
+            end
+        end
+    end
+end)
 
 script.on_event(defines.events.on_player_created, function(e)
     local player = game.get_player(e.player_index)

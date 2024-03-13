@@ -233,7 +233,7 @@ local function player_start_follow(player, player_data, index)
     player_data.following_entity = nil -- Stop any previous follow
 
     local entity = player_data.config[index].entity
-    if entity then
+    if entity and entity.valid then
         if player.surface ~= entity.surface then
             return
         end

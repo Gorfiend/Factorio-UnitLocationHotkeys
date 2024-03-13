@@ -14,4 +14,22 @@ data:extend({
         default_value = false,
         order = "b",
     },
+    {
+        type = "int-setting",
+        name = "ulh-setting-number-columns",
+        setting_type = "runtime-per-user",
+        default_value = 5,
+        minimum_value = 1,
+        maximum_value = 25,
+        order = "c",
+    },
+    {
+        type = "int-setting",
+        name = "ulh-setting-number-columns-labeled",
+        setting_type = "runtime-per-user",
+        default_value = 0,
+        minimum_value = 0,
+        maximum_value = 25,
+        order = "d",
+    },
 })

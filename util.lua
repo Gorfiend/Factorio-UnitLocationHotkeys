@@ -67,7 +67,7 @@ end
 --- @param position MapPosition
 --- @return string
 function util.position_to_string(position)
-    return "x=" .. position.x .. " y=" .. position.y
+    return "x=" .. string.format("%.0f", position.x) .. " y=" .. string.format("%.0f", position.y)
 end
 
 --- @param entity LuaEntity
@@ -78,6 +78,19 @@ function util.get_entity_recipe(entity)
     elseif entity.prototype.type == "furnace" then
         return entity.get_recipe() or entity.previous_recipe
     end
+end
+
+--- @param player LuaPlayer
+--- @param surface LuaSurface
+--- @return boolean
+function util.player_can_view_surface(player, surface)
+    if player.surface == surface then return true end
+    if remote.interfaces["space-exploration"] then
+        if remote.call("space-exploration", "remote_view_is_unlocked", {player=player}) then
+            return true
+        end
+    end
+    return false
 end
 
 return util

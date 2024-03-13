@@ -90,11 +90,19 @@ function gui.rebuild_table(player, player_data)
         type = "frame",
         style = "slot_button_deep_frame",
     }
+    local column_count = player.mod_settings["ulh-setting-number-columns"].value
+    if gui_data.labeled and player.mod_settings["ulh-setting-number-columns-labeled"].value > 0 then
+        column_count = player.mod_settings["ulh-setting-number-columns-labeled"].value
+    end
     local table = content.add {
         type = "table",
-        column_count = 5,
+        column_count = column_count,
         style = "filter_slot_table",
     }
+    -- Is there a way to set a default alignment, instead of setting each index?
+    for i = 1, column_count do
+        table.style.column_alignments[i] = "center"
+    end
 
     for index, slot in pairs(player_data.config) do
         --- @type string|LocalisedString
@@ -120,7 +128,7 @@ function gui.rebuild_table(player, player_data)
                 style = "red_slot_button"
                 tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Right-click to delete" }
             end
-        elseif player.surface == surface then
+        elseif util.player_can_view_surface(player, surface) then
             style = "slot_button"
             tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
 - Hold Control to pick a remote if the target is a spidertron
@@ -142,11 +150,7 @@ Right-click to edit
             direction = "vertical",
         }
         button_panel.style.vertical_spacing = 0
-        if gui_data.labeled then
-            button_panel.style.maximal_width = 60
-            button_panel.style.minimal_width = 60
-            button_panel.style.horizontal_align = "center"
-        end
+        button_panel.style.horizontal_align = "center"
         local button = button_panel.add {
             type = "sprite-button",
             tooltip = tooltip,
@@ -183,8 +187,9 @@ Right-click to edit
                 type = "label",
                 caption = slot.caption,
             }
-            -- Limit width. Buttons are 40x40, so this is a little wider.
-            label.style.maximal_width = 56
+            -- Ensure space between labels
+            label.style.left_padding = 4
+            label.style.right_padding = 4
         end
     end
 

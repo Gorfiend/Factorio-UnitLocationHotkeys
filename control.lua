@@ -146,8 +146,26 @@ local function go_to_location(player, slot, pick_remote)
             player.print({ "gui.ulh-surface-not-valid" })
             return
         elseif player.surface ~= surface then
-            player.print({ "gui.ulh-cant-go-to-other-surface", surface.name })
-            return
+            if remote.interfaces["space-exploration"] then
+                -- Space Exploration support - use remove view to (attempt to) go to another surface
+                if not remote.call("space-exploration", "remote_view_is_unlocked", {player=player}) then
+                    player.print("Must unlock remote view to go to locations on other surfaces")
+                    return
+                end
+                local zone = remote.call("space-exploration", "get_zone_from_surface_index", {
+                    surface_index = surface.index,
+                })
+                remote.call("space-exploration", "remote_view_start", {
+                    player = player,
+                    zone_name = zone.name,
+                    position = position,
+                    -- location_name = slot.caption,
+                    freeze_history = true,
+                })
+            else
+                player.print({ "gui.ulh-cant-go-to-other-surface", surface.name })
+                return
+            end
         end
     end
 
@@ -535,6 +553,15 @@ script.on_event(defines.events.on_player_respawned, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
     update_player_references(player)
+end)
+
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(e)
+    if e.setting == "ulh-setting-number-columns" or e.setting == "ulh-setting-number-columns-labeled" then
+        local player = game.get_player(e.player_index)
+        if not player then return end
+        local player_data = global.players[e.player_index]
+        gui.rebuild_table(player, player_data)
+    end
 end)
 
 script.on_init(function()

@@ -35,6 +35,12 @@ local gui = {}
 --- @param player_data PlayerData
 function gui.init_player_gui(player, player_data)
     player_data.gui.expanded = true
+    gui.create_frame(player, player_data)
+end
+
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+function gui.create_frame(player, player_data)
     player_data.gui.frame = mod_gui.get_frame_flow(player).add {
         type = "frame",
         style = mod_gui.frame_style,
@@ -47,6 +53,11 @@ end
 --- @param player_data PlayerData
 function gui.rebuild_table(player, player_data)
     local gui_data = player_data.gui
+    if not (gui_data.frame and gui_data.frame.valid) then
+        -- Something invalidated our frame... recreate it from scratch
+        gui.create_frame(player, player_data)
+        return
+    end
     gui_data.frame.clear()
 
     local toolbar = gui_data.frame.add {

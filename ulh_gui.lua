@@ -13,7 +13,6 @@ local ulh_gui = {}
 --- @field frame LuaGuiElement
 --- @field add_shortcut_button LuaGuiElement?
 --- @field edit_window EditWindowConfig
---- @field following_frame LuaGuiElement?
 
 
 --- @class EditWindowConfig
@@ -105,6 +104,7 @@ function ulh_gui.rebuild_table(player, player_data)
     if gui_data.labeled and player.mod_settings["ulh-setting-number-columns-labeled"].value > 0 then
         column_count = player.mod_settings["ulh-setting-number-columns-labeled"].value
     end
+    ---@cast column_count integer
     local table = content.add {
         type = "table",
         column_count = column_count,
@@ -140,7 +140,10 @@ function ulh_gui.rebuild_table(player, player_data)
                 style = "red_slot_button"
                 tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Right-click to delete" }
             end
-        elseif ulh_util.player_can_view_surface(player, surface) then
+        elseif not surface then
+            style = "red_slot_button"
+            tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Right-click to delete" }
+        else
             style = "slot_button"
             tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
 - Hold Control to pick a remote if the target is a spidertron
@@ -148,14 +151,6 @@ function ulh_gui.rebuild_table(player, player_data)
 Right-click to edit
 - Hold Control to delete]],
             }
-        else
-            if surface then
-                style = "yellow_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-on-other-surface", surface.name }, "\n", "Control + Right-click to delete" }
-            else
-                style = "red_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Right-click to delete" }
-            end
         end
         local button_panel = table.add {
             type = "flow",
@@ -173,7 +168,7 @@ Right-click to edit
                 index = index,
             }
         }
-        if game.is_valid_sprite_path(slot.sprite) then
+        if helpers.is_valid_sprite_path(slot.sprite) then
             button.sprite = slot.sprite
         end
 
@@ -232,7 +227,9 @@ function ulh_gui.open_edit_window(player, slot_index)
         player_data.gui.add_shortcut_button.enabled = false
     end
 
+    ---@diagnostic disable-next-line:missing-fields
     player_data.gui.edit_window = {}
+    ---@class EditWindowConfig
     local edit_window_data = player_data.gui.edit_window
     player_data.edit_slot_index = slot_index
 
@@ -241,7 +238,7 @@ function ulh_gui.open_edit_window(player, slot_index)
         name = "ulh_edit_window_frame",
         direction = "vertical",
     }
-    edit_window_data.frame.location = { 200, 200 }
+    edit_window_data.frame.location = { 400, 200 }
     player.opened = edit_window_data.frame
 
     local titlebar = edit_window_data.frame.add {
@@ -268,7 +265,7 @@ function ulh_gui.open_edit_window(player, slot_index)
         type = "sprite-button",
         name = "ulh_edit_window_close_button",
         style = "frame_action_button",
-        sprite = "utility/close_white",
+        sprite = "utility/close",
         hovered_sprite = "utility/close_black",
         clicked_sprite = "utility/close_black",
     }
@@ -330,6 +327,7 @@ function ulh_gui.open_edit_window(player, slot_index)
     edit_window_data.name_field = controls_table.add {
         type = "textfield",
         name = "ulh_edit_window_name_field",
+        icon_selector = true,
     }
     edit_window_data.name_field.style.width = 300
 
@@ -468,7 +466,7 @@ function ulh_gui.refresh_edit_window(player)
         edit_window_data.entity_button.elem_value = nil
         edit_window_data.recipe_button.elem_value = sprite_name
         edit_window_data.signal_button.elem_value = nil
-    elseif sprite_type == "item" or sprite_type == "fluid" or sprite_type == "virtual-signal" then
+    elseif sprite_type == "item" or sprite_type == "fluid" or sprite_type == "virtual-signal" or sprite_type == "space-location" or sprite_type == "asteroid-chunk" or sprite_type == "quality" then
         edit_window_data.entity_button.elem_value = nil
         edit_window_data.recipe_button.elem_value = nil
         if sprite_type == "virtual-signal" then
@@ -501,48 +499,6 @@ function ulh_gui.refresh_edit_window(player)
     edit_window_data.zoom_field.enabled = slot_data.use_zoom
     edit_window_data.zoom_slider.enabled = slot_data.use_zoom
     edit_window_data.zoom_max_button.enabled = slot_data.use_zoom
-end
-
---- @param player LuaPlayer
---- @param player_data PlayerData
-function ulh_gui.update_following(player, player_data)
-    if player_data.following_entity then
-        if not player_data.gui.following_frame then
-            player_data.gui.following_frame = player.gui.screen.add {
-                type = "frame",
-                name = "ulh_follow_window_frame",
-            }
-        else
-            player_data.gui.following_frame.clear()
-        end
-        player_data.gui.following_frame.style.padding = 4
-        local flow = player_data.gui.following_frame.add {
-            type = "flow",
-            direction = "horizontal",
-        }
-        flow.style.vertical_align = "center"
-
-        flow.add {
-            type = "label",
-            caption = { "", "Following: ", player_data.following_entity.localised_name, " ",
-                player_data.following_entity.entity_label }
-        }
-        local button = flow.add {
-            type = "sprite-button",
-            name = "ulh_follow_stop_button",
-            tooltip = "Stop following",
-            style = "tool_button",
-            sprite = "utility/deconstruction_mark",
-        }
-        button.style.padding = 0
-
-        player_data.gui.following_frame.location = { x = player.display_resolution.width / 3, y = 50 }
-    else
-        if player_data.gui.following_frame then
-            player_data.gui.following_frame.destroy()
-            player_data.gui.following_frame = nil
-        end
-    end
 end
 
 return ulh_gui

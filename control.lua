@@ -5,20 +5,14 @@ local ulh_gui = require("ulh_gui")
 -- Table for each players data
 --- @class GlobalData
 --- @field players PlayerData[]
---- @field listeners_added boolean
 storage = {}
 storage.players = {}
-storage.listeners_added = false
-
-local events = {}
 
 
 --- @class PlayerData
 --- @field config ConfigSlot[]
 --- @field gui PlayerGuiConfig
 --- @field edit_slot_index integer? the config index being edited, or nil if no edit
---- @field following_entity LuaEntity? the entity currently being followed
---- @field following_tick uint? the tick entity following started (needed to make breaking out by closing map work right)
 
 
 --- @class ConfigSlot
@@ -26,7 +20,7 @@ local events = {}
 --- @field surface_index uint? If it's a position, what surface
 --- @field position MapPosition?
 --- @field entity LuaEntity?
---- @field cloned_entity LuaEntity?
+--- @field cloned_entity LuaEntity? To follow the entity in some situations (like warptorio warps)
 --- @field player LuaPlayer?
 -- what zoom level to go to
 --- @field use_zoom boolean
@@ -40,10 +34,12 @@ local events = {}
 --- @param player LuaPlayer
 local function init_player(player)
     --- @type PlayerData
-    local player_data = {}
+    local player_data = {
+        ---@diagnostic disable-next-line:missing-fields
+        gui = {},
+        config = {},
+    }
     storage.players[player.index] = player_data
-    player_data.gui = {}
-    player_data.config = {}
     ulh_gui.init_player_gui(player, player_data)
 end
 
@@ -53,10 +49,10 @@ local function add_shortcut(player, selection)
     local player_data = storage.players[player.index]
 
     --- @type ConfigSlot
-    local config_slot = {}
-    config_slot.use_zoom = false
-    -- would really like to get the current player camera zoom/position, but can't...
-    config_slot.zoom = constants.zoom.default
+    local config_slot = {
+        use_zoom = false,
+        zoom = constants.zoom.default,
+    }
 
     ulh_util.fill_slot_from_selection(config_slot, player, selection)
 
@@ -71,120 +67,56 @@ local function do_pick_remote(player, entity, pick_remote)
     if pick_remote == "never" then return end
     if entity.type ~= "spider-vehicle" then return end
     if not player.cursor_stack then return end
-    if player.cursor_stack.connected_entity == entity then return end
     if pick_remote == "cursor-empty" and player.cursor_stack.valid_for_read then return end
     if not player.clear_cursor() then return end
 
-    local inv = player.get_main_inventory()
-    -- Try to get a connected remote from the inventory
-    if inv and inv.get_item_count("spidertron-remote") then
-        for i = 1, #inv do
-            local stack = inv[i]
-            if stack.connected_entity == entity then
-                player.cursor_stack.swap_stack(stack)
-                player.hand_location = { inventory = inv.index, slot = i --[[@as uint]] }
-                return
-            end
-        end
-    end
     -- otherwise create one
-    -- TODO add a map option for requiring you to have a remote in your inventory
     if player.is_cursor_empty() then
-        player.cursor_stack.set_stack { name = "ulh-spidertron-remote-oic", count = 1 }
-        player.cursor_stack.connected_entity = entity
-    end
-end
-
---- @param player LuaPlayer
---- @param player_data PlayerData
-local function player_stop_follow(player, player_data)
-    player_data.following_entity = nil
-    ulh_gui.update_following(player, player_data)
-    events.update_follow_listeners()
-end
-
---- @param player LuaPlayer
---- @param position MapPosition
---- @param zoom double?
-local function go_to_location_position(player, position, zoom)
-    if (zoom) then
-        if zoom < constants.zoom.world_min then
-            player.open_map(position, zoom)
-        else
-            player.zoom_to_world(position, zoom)
-        end
-    else
-        if player.render_mode == defines.render_mode.chart then
-            player.open_map(position)
-        else -- chart zoomed in or normal
-            player.zoom_to_world(position)
-        end
+        player.cursor_stack.set_stack { name = "spidertron-remote", count = 1 }
+        player.spidertron_remote_selection = { entity }
     end
 end
 
 --- @param player LuaPlayer
 --- @param slot ConfigSlot
+--- @param follow boolean
 --- @param pick_remote string?
-local function go_to_location(player, slot, pick_remote)
+local function go_to_location(player, slot, follow, pick_remote)
     if not player or not slot then return end
+    ulh_util.update_slot_entity(slot)
+    if slot.entity and not slot.entity.valid then
+        player.print({ "gui.ulh-entity-not-valid" })
+        return
+    end
+
     pick_remote = pick_remote or "never"
+    if follow then
+        if slot.entity then
+            player.centered_on = slot.entity
+            do_pick_remote(player, slot.entity, pick_remote)
+            return
+        end
+    end
+
     --- @type MapPosition
     local position
     if slot.position then
         position = slot.position
     elseif slot.entity then
-        ulh_util.update_slot_entity(slot)
-        if not slot.entity.valid then
-            player.print({ "gui.ulh-entity-not-valid" })
-            return
-        end
         position = slot.entity.position
         do_pick_remote(player, slot.entity, pick_remote)
     end
     if position == nil then return end -- shouldn't happen...
     local surface = ulh_util.get_slot_surface(slot)
-    if surface then
-        if not surface.valid then
-            player.print({ "gui.ulh-surface-not-valid" })
-            return
-        elseif player.surface ~= surface then
-            if remote.interfaces["space-exploration"] then
-                -- Space Exploration support - use remove view to (attempt to) go to another surface
-                if not remote.call("space-exploration", "remote_view_is_unlocked", {player=player}) then
-                    player.print("Must unlock remote view to go to locations on other surfaces")
-                    return
-                end
-                local zone = remote.call("space-exploration", "get_zone_from_surface_index", {
-                    surface_index = surface.index,
-                })
-                if zone == nil then
-                    player.print("Can't go to this surface (spaceship?) - Unable to find surface")
-                    return
-                end
-                -- This opens the location in nav view, and not in the map - which prevents follow from working
-                -- Probably need to delay this stuff a tick so it happens after to make it work the same
-                remote.call("space-exploration", "remote_view_start", {
-                    player = player,
-                    zone_name = zone.name,
-                    position = position,
-                    -- location_name = slot.caption,
-                    freeze_history = true,
-                })
-            else
-                player.print({ "gui.ulh-cant-go-to-other-surface", surface.name })
-                return
-            end
-        end
+
+    player.set_controller({
+        type = defines.controllers.remote,
+        position = position,
+        surface = surface,
+    })
+    if slot.use_zoom and slot.zoom then
+        player.zoom = slot.zoom
     end
-
-    go_to_location_position(player, position, slot.use_zoom and slot.zoom or nil)
-end
-
---- @param player LuaPlayer
---- @param index integer
---- @param pick_remote string?
-local function go_to_location_index(player, index, pick_remote)
-    go_to_location(player, storage.players[player.index].config[index], pick_remote)
 end
 
 --- @param player LuaPlayer
@@ -196,7 +128,7 @@ local function on_config_update(player)
     if player_data.edit_slot_index then
         local slot = ulh_util.get_editing_slot(player_data)
         if slot then
-            go_to_location(player, slot) -- live preview of zoom level
+            go_to_location(player, slot, false) -- live preview of zoom level
         end
     end
 end
@@ -224,44 +156,6 @@ local function delete_config_index(player, player_data, index)
     end
     table.remove(player_data.config, index)
     ulh_gui.rebuild_table(player, player_data)
-end
-
---- @param player LuaPlayer
---- @param player_data PlayerData
---- @param index integer
-local function player_start_follow(player, player_data, index)
-    player_data.following_entity = nil -- Stop any previous follow
-
-    local entity = player_data.config[index].entity
-    if entity and entity.valid then
-        if player.surface ~= entity.surface then
-            return
-        end
-        player_data.following_entity = entity
-        player_data.following_tick = game.tick
-    end
-    ulh_gui.update_following(player, player_data)
-    events.update_follow_listeners()
-end
-
-local function on_tick_follow()
-    for _, player in pairs(game.connected_players) do
-        local player_data = storage.players[player.index]
-        if player_data.following_entity then
-            if player_data.following_entity.valid then
-                if player_data.following_tick < game.tick then
-                    -- Player left map mode, so stop following
-                    if player.render_mode == defines.render_mode.game then
-                        player_stop_follow(player, player_data)
-                    else
-                        go_to_location_position(player, player_data.following_entity.position, nil)
-                    end
-                end
-            else
-                player_stop_follow(player, player_data)
-            end
-        end
-    end
 end
 
 -- GUI Event handlers
@@ -301,8 +195,6 @@ script.on_event(defines.events.on_gui_click, function(e)
         if not player_data.edit_slot_index then return end
         ulh_util.get_editing_slot(player_data).zoom = constants.zoom.world_min
         on_config_update(player)
-    elseif e.element and e.element.name == "ulh_follow_stop_button" then
-        player_stop_follow(player, storage.players[e.player_index])
     elseif e.element.tags.ulh_action == "go_to_location_button" then
         --- @type number
         local config_index = e.element.tags.index --[[@as number]]
@@ -310,19 +202,13 @@ script.on_event(defines.events.on_gui_click, function(e)
         ulh_gui.rebuild_table(player, player_data)
         if e.button == defines.mouse_button_type.left then
             ulh_gui.close_edit_window(player, player_data)
-            go_to_location_index(player, config_index, e.control and "always" or "never")
-            if e.shift then
-                player_start_follow(player, player_data, config_index)
-            else
-                player_stop_follow(player, player_data)
-            end
+            go_to_location(player, player_data.config[config_index], e.shift, e.control and "always" or "never")
         elseif e.button == defines.mouse_button_type.right then
             if e.control then
                 delete_config_index(player, player_data, config_index)
             else
-                player_stop_follow(player, player_data)
+                go_to_location(player, player_data.config[config_index], false)
                 ulh_gui.open_edit_window(player, config_index)
-                go_to_location_index(player, config_index)
             end
         end
     end
@@ -394,7 +280,9 @@ script.on_event(defines.events.on_gui_elem_changed, function(e)
         local elem = e.element.elem_value
         if elem then
             local sprite
-            if elem.type == "virtual" then
+            if not elem.type then
+                sprite = "item/" .. elem.name
+            elseif elem.type == "virtual" then
                 sprite = "virtual-signal/" .. elem.name
             else
                 sprite = elem.type .. "/" .. elem.name
@@ -430,8 +318,6 @@ script.on_event(defines.events.on_gui_closed, function(e)
     if not player then return end
     if e.element and e.element.name == "ulh_edit_window_frame" then
         ulh_gui.close_edit_window(player, storage.players[e.player_index])
-    elseif e.element and e.element.name == "ulh_follow_window_frame" then
-        player_stop_follow(player, storage.players[e.player_index])
     end
 end)
 
@@ -476,66 +362,13 @@ local function on_keyboard_shortcut(e)
     local player = game.get_player(e.player_index)
     local player_data = storage.players[e.player_index]
     if player and player_data and player_data.config[index] then
-        player_stop_follow(player, player_data)
-        go_to_location(player, player_data.config[index], player.mod_settings["ulh-hotkey-picks-remote"].value --[[@as string]])
-        if player.mod_settings["ulh-hotkey-starts-follow"].value then
-            player_start_follow(player, player_data, index)
-        end
+        go_to_location(player, player_data.config[index], player.mod_settings["ulh-hotkey-starts-follow"].value --[[@as boolean]], player.mod_settings["ulh-hotkey-picks-remote"].value --[[@as string]])
         ulh_gui.rebuild_table(player, player_data)
     end
 end
 
 for i = 1, 10 do
     script.on_event("ulh-go-to-location-index-" .. i, on_keyboard_shortcut)
-end
-
-local function on_input_move(e)
-    local player = game.get_player(e.player_index)
-    if not player then return end
-    local player_data = storage.players[e.player_index]
-    if player_data.following_entity then
-        player_stop_follow(player, player_data)
-    end
-end
-
-
-function events.register_follow_listeners()
-    script.on_event("ulh-follow-move-up", on_input_move)
-    script.on_event("ulh-follow-move-down", on_input_move)
-    script.on_event("ulh-follow-move-left", on_input_move)
-    script.on_event("ulh-follow-move-right", on_input_move)
-
-    script.on_event(defines.events.on_tick, on_tick_follow)
-end
-
-function events.unregister_follow_listeners()
-    script.on_event("ulh-follow-move-up", nil)
-    script.on_event("ulh-follow-move-down", nil)
-    script.on_event("ulh-follow-move-left", nil)
-    script.on_event("ulh-follow-move-right", nil)
-
-    script.on_event(defines.events.on_tick, nil)
-end
-
-function events.update_follow_listeners()
-    local need_added = false
-    for index, player_data in pairs(storage.players) do
-        if player_data.following_entity then
-            local player = game.get_player(index)
-            if player and player.connected then
-                need_added = true
-                break
-            end
-        end
-    end
-    if storage.listeners_added ~= need_added then
-        storage.listeners_added = need_added
-        if need_added then
-            events.register_follow_listeners()
-        else
-            events.unregister_follow_listeners()
-        end
-    end
 end
 
 
@@ -546,7 +379,7 @@ script.on_event(defines.events.on_entity_cloned, function(e)
     -- Maybe can make a map of entities that are being followed the first time this is called?
     for _, player_data in pairs(storage.players) do
         for _, slot in pairs(player_data.config) do
-            if slot.entity == e.source then
+            if slot.entity == e.source or slot.cloned_entity == e.source then
                 slot.cloned_entity = e.destination
             end
         end
@@ -587,12 +420,6 @@ end)
 script.on_init(function()
     for _, player in pairs(game.players) do
         init_player(player)
-    end
-end)
-
-script.on_load(function ()
-    if storage.listeners_added then
-        events.register_follow_listeners()
     end
 end)
 

@@ -34,9 +34,9 @@ function ulh_util.fill_slot_from_selection(slot, player, selection)
         if is_character and entity.player then
             slot.player = entity.player
         end
-        local recipe = ulh_util.get_entity_recipe(entity)
-        if recipe then
-            slot.sprite = "recipe/" .. recipe.name
+        local recipe_name = ulh_util.get_entity_recipe(entity)
+        if recipe_name then
+            slot.sprite = "recipe/" .. recipe_name
         else
             slot.sprite = "entity/" .. entity.name
         end
@@ -71,26 +71,27 @@ function ulh_util.position_to_string(position)
 end
 
 --- @param entity LuaEntity
---- @return LuaRecipe?
+--- @return string?
 function ulh_util.get_entity_recipe(entity)
+    local recipe
     if entity.prototype.type == "assembling-machine" then
-        return entity.get_recipe()
+        recipe = entity.get_recipe()
     elseif entity.prototype.type == "furnace" then
-        return entity.get_recipe() or entity.previous_recipe
-    end
-end
-
---- @param player LuaPlayer
---- @param surface LuaSurface
---- @return boolean
-function ulh_util.player_can_view_surface(player, surface)
-    if player.surface == surface then return true end
-    if remote.interfaces["space-exploration"] then
-        if remote.call("space-exploration", "remote_view_is_unlocked", {player=player}) then
-            return true
+        if entity.get_recipe() then
+            recipe = entity.get_recipe()
+        end
+        if entity.previous_recipe then
+            recipe = entity.previous_recipe.name
         end
     end
-    return false
+    if recipe then
+        if type(recipe) == "string" then
+            return recipe
+        end
+        if recipe.name then
+            return recipe.name
+        end
+    end
 end
 
 function ulh_util.update_slot_entity(slot)

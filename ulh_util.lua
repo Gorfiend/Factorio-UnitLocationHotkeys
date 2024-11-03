@@ -1,14 +1,14 @@
-local util = {}
+local ulh_util = {}
 
 --- @param player_data PlayerData
 --- @return ConfigSlot
-function util.get_editing_slot(player_data)
+function ulh_util.get_editing_slot(player_data)
     return player_data.config[player_data.edit_slot_index]
 end
 
 --- @param slot ConfigSlot
 --- @return LuaSurface?
-function util.get_slot_surface(slot)
+function ulh_util.get_slot_surface(slot)
     if slot.entity then
         if slot.entity.valid then
             return slot.entity.surface
@@ -23,7 +23,7 @@ end
 --- @param slot ConfigSlot
 --- @param player LuaPlayer
 --- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
-function util.fill_slot_from_selection(slot, player, selection)
+function ulh_util.fill_slot_from_selection(slot, player, selection)
     slot.player = nil
     if selection and #(selection.entities) > 0 then
         local entity = selection.entities[1]
@@ -34,7 +34,7 @@ function util.fill_slot_from_selection(slot, player, selection)
         if is_character and entity.player then
             slot.player = entity.player
         end
-        local recipe = util.get_entity_recipe(entity)
+        local recipe = ulh_util.get_entity_recipe(entity)
         if recipe then
             slot.sprite = "recipe/" .. recipe.name
         else
@@ -59,20 +59,20 @@ function util.fill_slot_from_selection(slot, player, selection)
         slot.entity = nil
         slot.sprite = "item/radar"
         if not slot.caption then
-            slot.caption = util.position_to_string(position)
+            slot.caption = ulh_util.position_to_string(position)
         end
     end
 end
 
 --- @param position MapPosition
 --- @return string
-function util.position_to_string(position)
+function ulh_util.position_to_string(position)
     return "x=" .. string.format("%.0f", position.x) .. " y=" .. string.format("%.0f", position.y)
 end
 
 --- @param entity LuaEntity
 --- @return LuaRecipe?
-function util.get_entity_recipe(entity)
+function ulh_util.get_entity_recipe(entity)
     if entity.prototype.type == "assembling-machine" then
         return entity.get_recipe()
     elseif entity.prototype.type == "furnace" then
@@ -83,7 +83,7 @@ end
 --- @param player LuaPlayer
 --- @param surface LuaSurface
 --- @return boolean
-function util.player_can_view_surface(player, surface)
+function ulh_util.player_can_view_surface(player, surface)
     if player.surface == surface then return true end
     if remote.interfaces["space-exploration"] then
         if remote.call("space-exploration", "remote_view_is_unlocked", {player=player}) then
@@ -93,7 +93,7 @@ function util.player_can_view_surface(player, surface)
     return false
 end
 
-function util.update_slot_entity(slot)
+function ulh_util.update_slot_entity(slot)
     -- Change the slot entity to be the cloned entity, if needed/possible
     if slot.entity and not slot.entity.valid then
         if slot.cloned_entity and slot.cloned_entity.valid then
@@ -104,4 +104,4 @@ function util.update_slot_entity(slot)
 end
 
 
-return util
+return ulh_util

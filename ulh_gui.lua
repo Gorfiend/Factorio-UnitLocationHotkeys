@@ -1,10 +1,10 @@
 local mod_gui = require("mod-gui")
 
 local constants = require("constants")
-local util = require("util")
+local ulh_util = require("ulh_util")
 
 --- @class UlhGui
-local gui = {}
+local ulh_gui = {}
 
 
 --- @class PlayerGuiConfig
@@ -33,29 +33,29 @@ local gui = {}
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.init_player_gui(player, player_data)
+function ulh_gui.init_player_gui(player, player_data)
     player_data.gui.expanded = true
-    gui.create_frame(player, player_data)
+    ulh_gui.create_frame(player, player_data)
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.create_frame(player, player_data)
+function ulh_gui.create_frame(player, player_data)
     player_data.gui.frame = mod_gui.get_frame_flow(player).add {
         type = "frame",
         style = mod_gui.frame_style,
         direction = "vertical",
     }
-    gui.rebuild_table(player, player_data)
+    ulh_gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.rebuild_table(player, player_data)
+function ulh_gui.rebuild_table(player, player_data)
     local gui_data = player_data.gui
     if not (gui_data.frame and gui_data.frame.valid) then
         -- Something invalidated our frame... recreate it from scratch
-        gui.create_frame(player, player_data)
+        ulh_gui.create_frame(player, player_data)
         return
     end
     gui_data.frame.clear()
@@ -118,7 +118,7 @@ function gui.rebuild_table(player, player_data)
     for index, slot in pairs(player_data.config) do
         --- @type string|LocalisedString
         local prefix = ""
-        util.update_slot_entity(slot)
+        ulh_util.update_slot_entity(slot)
         if slot.caption and slot.caption ~= "" then
             prefix = slot.caption .. "\n"
         elseif slot.entity and slot.entity.valid then
@@ -131,7 +131,7 @@ function gui.rebuild_table(player, player_data)
         end
         local style
         local tooltip
-        local surface = util.get_slot_surface(slot)
+        local surface = ulh_util.get_slot_surface(slot)
         if slot.entity and not slot.entity.valid then
             if slot.player and slot.player.valid then
                 style = "red_slot_button"
@@ -140,7 +140,7 @@ function gui.rebuild_table(player, player_data)
                 style = "red_slot_button"
                 tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Right-click to delete" }
             end
-        elseif util.player_can_view_surface(player, surface) then
+        elseif ulh_util.player_can_view_surface(player, surface) then
             style = "slot_button"
             tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
 - Hold Control to pick a remote if the target is a spidertron
@@ -218,9 +218,9 @@ end
 
 --- @param player LuaPlayer
 --- @param slot_index integer
-function gui.open_edit_window(player, slot_index)
-    local player_data = global.players[player.index]
-    gui.close_edit_window(player, player_data)
+function ulh_gui.open_edit_window(player, slot_index)
+    local player_data = storage.players[player.index]
+    ulh_gui.close_edit_window(player, player_data)
 
     local slot = player_data.config[slot_index]
     if slot.entity and not slot.entity.valid then
@@ -422,13 +422,13 @@ function gui.open_edit_window(player, slot_index)
         tooltip = "Set to the most zoomed out possible without changing to map view",
     }
 
-    gui.rebuild_table(player, global.players[player.index])
-    gui.refresh_edit_window(player)
+    ulh_gui.rebuild_table(player, storage.players[player.index])
+    ulh_gui.refresh_edit_window(player)
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.close_edit_window(player, player_data)
+function ulh_gui.close_edit_window(player, player_data)
     if player_data.gui.edit_window then
         player_data.gui.edit_window.frame.destroy()
         local stack = player.cursor_stack
@@ -444,12 +444,12 @@ function gui.close_edit_window(player, player_data)
 end
 
 --- @param player LuaPlayer
-function gui.refresh_edit_window(player)
-    local player_data = global.players[player.index]
+function ulh_gui.refresh_edit_window(player)
+    local player_data = storage.players[player.index]
     local edit_window_data = player_data.gui.edit_window
     if not edit_window_data then return end
 
-    local slot_data = util.get_editing_slot(player_data)
+    local slot_data = ulh_util.get_editing_slot(player_data)
 
 
     edit_window_data.title_label.caption = "Edit entry #" .. player_data.edit_slot_index
@@ -482,14 +482,14 @@ function gui.refresh_edit_window(player)
     end
 
     if slot_data.position then
-        edit_window_data.location_label.caption = util.position_to_string(slot_data.position)
+        edit_window_data.location_label.caption = ulh_util.position_to_string(slot_data.position)
     elseif slot_data.entity and slot_data.entity.valid then
         if slot_data.entity.entity_label then
             edit_window_data.location_label.caption = { "", slot_data.entity.entity_label,
-                " (", util.position_to_string(slot_data.entity.position), ")" }
+                " (", ulh_util.position_to_string(slot_data.entity.position), ")" }
         else
             edit_window_data.location_label.caption = { "", slot_data.entity.localised_name,
-                " (", util.position_to_string(slot_data.entity.position), ")" }
+                " (", ulh_util.position_to_string(slot_data.entity.position), ")" }
         end
     else
         edit_window_data.location_label = nil
@@ -505,7 +505,7 @@ end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
-function gui.update_following(player, player_data)
+function ulh_gui.update_following(player, player_data)
     if player_data.following_entity then
         if not player_data.gui.following_frame then
             player_data.gui.following_frame = player.gui.screen.add {
@@ -545,4 +545,4 @@ function gui.update_following(player, player_data)
     end
 end
 
-return gui
+return ulh_gui

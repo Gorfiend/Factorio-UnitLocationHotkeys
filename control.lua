@@ -1,14 +1,14 @@
 local constants = require("constants")
-local util = require("util")
-local gui = require("gui")
+local ulh_util = require("ulh_util")
+local ulh_gui = require("ulh_gui")
 
 -- Table for each players data
 --- @class GlobalData
 --- @field players PlayerData[]
 --- @field listeners_added boolean
-global = {}
-global.players = {}
-global.listeners_added = false
+storage = {}
+storage.players = {}
+storage.listeners_added = false
 
 local events = {}
 
@@ -41,16 +41,16 @@ local events = {}
 local function init_player(player)
     --- @type PlayerData
     local player_data = {}
-    global.players[player.index] = player_data
+    storage.players[player.index] = player_data
     player_data.gui = {}
     player_data.config = {}
-    gui.init_player_gui(player, player_data)
+    ulh_gui.init_player_gui(player, player_data)
 end
 
 --- @param player LuaPlayer
 --- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
 local function add_shortcut(player, selection)
-    local player_data = global.players[player.index]
+    local player_data = storage.players[player.index]
 
     --- @type ConfigSlot
     local config_slot = {}
@@ -58,10 +58,10 @@ local function add_shortcut(player, selection)
     -- would really like to get the current player camera zoom/position, but can't...
     config_slot.zoom = constants.zoom.default
 
-    util.fill_slot_from_selection(config_slot, player, selection)
+    ulh_util.fill_slot_from_selection(config_slot, player, selection)
 
     table.insert(player_data.config, config_slot)
-    gui.rebuild_table(player, player_data)
+    ulh_gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
@@ -99,7 +99,7 @@ end
 --- @param player_data PlayerData
 local function player_stop_follow(player, player_data)
     player_data.following_entity = nil
-    gui.update_following(player, player_data)
+    ulh_gui.update_following(player, player_data)
     events.update_follow_listeners()
 end
 
@@ -133,7 +133,7 @@ local function go_to_location(player, slot, pick_remote)
     if slot.position then
         position = slot.position
     elseif slot.entity then
-        util.update_slot_entity(slot)
+        ulh_util.update_slot_entity(slot)
         if not slot.entity.valid then
             player.print({ "gui.ulh-entity-not-valid" })
             return
@@ -142,7 +142,7 @@ local function go_to_location(player, slot, pick_remote)
         do_pick_remote(player, slot.entity, pick_remote)
     end
     if position == nil then return end -- shouldn't happen...
-    local surface = util.get_slot_surface(slot)
+    local surface = ulh_util.get_slot_surface(slot)
     if surface then
         if not surface.valid then
             player.print({ "gui.ulh-surface-not-valid" })
@@ -184,17 +184,17 @@ end
 --- @param index integer
 --- @param pick_remote string?
 local function go_to_location_index(player, index, pick_remote)
-    go_to_location(player, global.players[player.index].config[index], pick_remote)
+    go_to_location(player, storage.players[player.index].config[index], pick_remote)
 end
 
 --- @param player LuaPlayer
 local function on_config_update(player)
-    gui.refresh_edit_window(player)
-    local player_data = global.players[player.index]
-    gui.rebuild_table(player, player_data)
+    ulh_gui.refresh_edit_window(player)
+    local player_data = storage.players[player.index]
+    ulh_gui.rebuild_table(player, player_data)
 
     if player_data.edit_slot_index then
-        local slot = util.get_editing_slot(player_data)
+        local slot = ulh_util.get_editing_slot(player_data)
         if slot then
             go_to_location(player, slot) -- live preview of zoom level
         end
@@ -203,13 +203,13 @@ end
 
 --- @param updated_player LuaPlayer
 local function update_player_references(updated_player)
-    for player_index, player_data in pairs(global.players) do
+    for player_index, player_data in pairs(storage.players) do
         for _, slot in pairs(player_data.config) do
             if slot.player == updated_player then
                 slot.entity = updated_player.character
                 local player = game.get_player(player_index)
                 if not player then return end
-                gui.rebuild_table(player, player_data)
+                ulh_gui.rebuild_table(player, player_data)
             end
         end
     end
@@ -220,10 +220,10 @@ end
 --- @param index integer
 local function delete_config_index(player, player_data, index)
     if player_data.edit_slot_index == index then
-        gui.close_edit_window(player, player_data)
+        ulh_gui.close_edit_window(player, player_data)
     end
     table.remove(player_data.config, index)
-    gui.rebuild_table(player, player_data)
+    ulh_gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
@@ -240,13 +240,13 @@ local function player_start_follow(player, player_data, index)
         player_data.following_entity = entity
         player_data.following_tick = game.tick
     end
-    gui.update_following(player, player_data)
+    ulh_gui.update_following(player, player_data)
     events.update_follow_listeners()
 end
 
 local function on_tick_follow()
     for _, player in pairs(game.connected_players) do
-        local player_data = global.players[player.index]
+        local player_data = storage.players[player.index]
         if player_data.following_entity then
             if player_data.following_entity.valid then
                 if player_data.following_tick < game.tick then
@@ -270,46 +270,46 @@ script.on_event(defines.events.on_gui_click, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
     if e.element.name == "ulh_expanded_button" then
-        local player_data = global.players[e.player_index]
+        local player_data = storage.players[e.player_index]
         player_data.gui.expanded = not player_data.gui.expanded
-        gui.rebuild_table(player, player_data)
+        ulh_gui.rebuild_table(player, player_data)
     elseif e.element.name == "ulh_label_button" then
-        local player_data = global.players[e.player_index]
+        local player_data = storage.players[e.player_index]
         player_data.gui.labeled = not player_data.gui.labeled
-        gui.rebuild_table(player, player_data)
+        ulh_gui.rebuild_table(player, player_data)
     elseif e.element.name == "ulh_add_shortcut_button" then
         if e.shift then
             add_shortcut(player)
         else
-            local player_data = global.players[e.player_index]
+            local player_data = storage.players[e.player_index]
             if not player.cursor_stack then return end
-            gui.close_edit_window(player, player_data)
+            ulh_gui.close_edit_window(player, player_data)
             if player.clear_cursor() then
                 player.cursor_stack.set_stack { name = "ulh-location-selection-tool", count = 1 }
             end
         end
     elseif e.element.name == "ulh_edit_window_close_button" then
-        local player_data = global.players[e.player_index]
-        gui.close_edit_window(player, player_data)
+        local player_data = storage.players[e.player_index]
+        ulh_gui.close_edit_window(player, player_data)
     elseif e.element.name == "ulh_edit_window_location_button" then
         if not player.cursor_stack then return end
         if player.clear_cursor() then
             player.cursor_stack.set_stack { name = "ulh-location-selection-tool", count = 1 }
         end
     elseif e.element.name == "ulh_edit_window_zoom_max_button" then
-        local player_data = global.players[e.player_index]
+        local player_data = storage.players[e.player_index]
         if not player_data.edit_slot_index then return end
-        util.get_editing_slot(player_data).zoom = constants.zoom.world_min
+        ulh_util.get_editing_slot(player_data).zoom = constants.zoom.world_min
         on_config_update(player)
     elseif e.element and e.element.name == "ulh_follow_stop_button" then
-        player_stop_follow(player, global.players[e.player_index])
+        player_stop_follow(player, storage.players[e.player_index])
     elseif e.element.tags.ulh_action == "go_to_location_button" then
         --- @type number
         local config_index = e.element.tags.index --[[@as number]]
-        local player_data = global.players[e.player_index]
-        gui.rebuild_table(player, player_data)
+        local player_data = storage.players[e.player_index]
+        ulh_gui.rebuild_table(player, player_data)
         if e.button == defines.mouse_button_type.left then
-            gui.close_edit_window(player, player_data)
+            ulh_gui.close_edit_window(player, player_data)
             go_to_location_index(player, config_index, e.control and "always" or "never")
             if e.shift then
                 player_start_follow(player, player_data, config_index)
@@ -321,7 +321,7 @@ script.on_event(defines.events.on_gui_click, function(e)
                 delete_config_index(player, player_data, config_index)
             else
                 player_stop_follow(player, player_data)
-                gui.open_edit_window(player, config_index)
+                ulh_gui.open_edit_window(player, config_index)
                 go_to_location_index(player, config_index)
             end
         end
@@ -331,10 +331,10 @@ end)
 script.on_event(defines.events.on_gui_checked_state_changed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if not player_data then return end
     if e.element.name == "ulh_edit_window_zoom_check" then
-        util.get_editing_slot(player_data).use_zoom = e.element.state
+        ulh_util.get_editing_slot(player_data).use_zoom = e.element.state
         on_config_update(player)
     end
 end)
@@ -342,10 +342,10 @@ end)
 script.on_event(defines.events.on_gui_text_changed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if not player_data then return end
     if e.element.name == "ulh_edit_window_name_field" then
-        util.get_editing_slot(player_data).caption = e.element.text
+        ulh_util.get_editing_slot(player_data).caption = e.element.text
         on_config_update(player)
     end
 end)
@@ -353,13 +353,13 @@ end)
 script.on_event(defines.events.on_gui_confirmed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if not player_data then return end
     if e.element.name == "ulh_edit_window_zoom_field" then
         local zoom = tonumber(e.element.text)
         if not zoom then return end
         zoom = math.min(math.max(zoom, constants.zoom.min), constants.zoom.max)
-        util.get_editing_slot(player_data).zoom = zoom
+        ulh_util.get_editing_slot(player_data).zoom = zoom
         on_config_update(player)
     end
 end)
@@ -367,10 +367,10 @@ end)
 script.on_event(defines.events.on_gui_value_changed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if not player_data then return end
     if e.element.name == "ulh_edit_window_zoom_slider" then
-        util.get_editing_slot(player_data).zoom = e.element.slider_value
+        ulh_util.get_editing_slot(player_data).zoom = e.element.slider_value
         on_config_update(player)
     end
 end)
@@ -378,16 +378,16 @@ end)
 script.on_event(defines.events.on_gui_elem_changed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if not player_data then return end
     if e.element.name == "ulh_edit_window_entity_button" then
         if e.element.elem_value then
-            util.get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
+            ulh_util.get_editing_slot(player_data).sprite = "entity/" .. e.element.elem_value
             on_config_update(player)
         end
     elseif e.element.name == "ulh_edit_window_recipe_button" then
         if e.element.elem_value then
-            util.get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
+            ulh_util.get_editing_slot(player_data).sprite = "recipe/" .. e.element.elem_value
             on_config_update(player)
         end
     elseif e.element.name == "ulh_edit_window_signal_button" then
@@ -399,7 +399,7 @@ script.on_event(defines.events.on_gui_elem_changed, function(e)
             else
                 sprite = elem.type .. "/" .. elem.name
             end
-            util.get_editing_slot(player_data).sprite = sprite
+            ulh_util.get_editing_slot(player_data).sprite = sprite
             on_config_update(player)
         end
     end
@@ -408,7 +408,7 @@ end)
 script.on_event(defines.events.on_gui_selection_state_changed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if not player_data then return end
     local edit_index = player_data.edit_slot_index
     if not edit_index then return end
@@ -429,9 +429,9 @@ script.on_event(defines.events.on_gui_closed, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
     if e.element and e.element.name == "ulh_edit_window_frame" then
-        gui.close_edit_window(player, global.players[e.player_index])
+        ulh_gui.close_edit_window(player, storage.players[e.player_index])
     elseif e.element and e.element.name == "ulh_follow_window_frame" then
-        player_stop_follow(player, global.players[e.player_index])
+        player_stop_follow(player, storage.players[e.player_index])
     end
 end)
 
@@ -441,12 +441,12 @@ local function on_selection(e)
     local player = game.get_player(e.player_index)
     if not player then return end
     local player_index = e.player_index
-    local player_data = global.players[player_index]
+    local player_data = storage.players[player_index]
     if player_data.edit_slot_index then
         -- editing
-        local slot = util.get_editing_slot(player_data)
+        local slot = ulh_util.get_editing_slot(player_data)
 
-        util.fill_slot_from_selection(slot, player, e)
+        ulh_util.fill_slot_from_selection(slot, player, e)
         on_config_update(player)
     else
         -- create new
@@ -465,8 +465,8 @@ end)
 script.on_event(defines.events.on_player_changed_surface, function(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
-    gui.rebuild_table(player, player_data)
+    local player_data = storage.players[e.player_index]
+    ulh_gui.rebuild_table(player, player_data)
 end)
 
 --- @param e CustomInputEvent
@@ -474,14 +474,14 @@ local function on_keyboard_shortcut(e)
     local _, _, capture = string.find(e.input_name, "ulh%-go%-to%-location%-index%-(.+)")
     local index = tonumber(capture) --- @cast index integer
     local player = game.get_player(e.player_index)
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if player and player_data and player_data.config[index] then
         player_stop_follow(player, player_data)
         go_to_location(player, player_data.config[index], player.mod_settings["ulh-hotkey-picks-remote"].value --[[@as string]])
         if player.mod_settings["ulh-hotkey-starts-follow"].value then
             player_start_follow(player, player_data, index)
         end
-        gui.rebuild_table(player, player_data)
+        ulh_gui.rebuild_table(player, player_data)
     end
 end
 
@@ -492,7 +492,7 @@ end
 local function on_input_move(e)
     local player = game.get_player(e.player_index)
     if not player then return end
-    local player_data = global.players[e.player_index]
+    local player_data = storage.players[e.player_index]
     if player_data.following_entity then
         player_stop_follow(player, player_data)
     end
@@ -519,7 +519,7 @@ end
 
 function events.update_follow_listeners()
     local need_added = false
-    for index, player_data in pairs(global.players) do
+    for index, player_data in pairs(storage.players) do
         if player_data.following_entity then
             local player = game.get_player(index)
             if player and player.connected then
@@ -528,8 +528,8 @@ function events.update_follow_listeners()
             end
         end
     end
-    if global.listeners_added ~= need_added then
-        global.listeners_added = need_added
+    if storage.listeners_added ~= need_added then
+        storage.listeners_added = need_added
         if need_added then
             events.register_follow_listeners()
         else
@@ -544,7 +544,7 @@ end
 script.on_event(defines.events.on_entity_cloned, function(e)
     -- This is likely bad performance when theres a lot of slots/entities being cloned
     -- Maybe can make a map of entities that are being followed the first time this is called?
-    for _, player_data in pairs(global.players) do
+    for _, player_data in pairs(storage.players) do
         for _, slot in pairs(player_data.config) do
             if slot.entity == e.source then
                 slot.cloned_entity = e.destination
@@ -560,7 +560,7 @@ script.on_event(defines.events.on_player_created, function(e)
 end)
 
 script.on_event(defines.events.on_player_removed, function(e)
-    global.players[e.player_index] = nil
+    storage.players[e.player_index] = nil
 end)
 
 script.on_event(defines.events.on_player_joined_game, function(e)
@@ -579,8 +579,8 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(e)
     if e.setting == "ulh-setting-number-columns" or e.setting == "ulh-setting-number-columns-labeled" then
         local player = game.get_player(e.player_index)
         if not player then return end
-        local player_data = global.players[e.player_index]
-        gui.rebuild_table(player, player_data)
+        local player_data = storage.players[e.player_index]
+        ulh_gui.rebuild_table(player, player_data)
     end
 end)
 
@@ -591,7 +591,7 @@ script.on_init(function()
 end)
 
 script.on_load(function ()
-    if global.listeners_added then
+    if storage.listeners_added then
         events.register_follow_listeners()
     end
 end)
@@ -599,10 +599,10 @@ end)
 script.on_configuration_changed(function(e)
     -- Update everyone's table to use the new tooltip
     if e.mod_changes["UnitLocationHotkeys"] ~= nil then
-        for player_index, player_data in pairs(global.players) do
+        for player_index, player_data in pairs(storage.players) do
             local player = game.get_player(player_index)
             if player then
-                gui.rebuild_table(player, player_data)
+                ulh_gui.rebuild_table(player, player_data)
             end
         end
     end

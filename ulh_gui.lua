@@ -146,7 +146,7 @@ function ulh_gui.rebuild_table(player, player_data)
         else
             style = "slot_button"
             tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
-- Hold Control to pick a remote if the target is a spidertron
+- Hold Control to pick a remote if the target is a spidertron, or start remote driving if possible
 - Hold Shift to follow the entity
 Right-click to edit
 - Hold Control to delete]],

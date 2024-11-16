@@ -65,15 +65,25 @@ end
 --- @param pick_remote string
 local function do_pick_remote(player, entity, pick_remote)
     if pick_remote == "never" then return end
-    if entity.type ~= "spider-vehicle" then return end
-    if not player.cursor_stack then return end
-    if pick_remote == "cursor-empty" and player.cursor_stack.valid_for_read then return end
-    if not player.clear_cursor() then return end
+    if entity.type == "car" or entity.type == "locomotive" then
+        -- There's a allow_remote_driving field that should probably be checked here, but I don't see it on the entity or prototype...
+        -- Ensure the player is in remote view so we don't accidentally teleport them
+        if player.controller_type ~= defines.controllers.remote then return end
+        -- Don't eject any player that's currently driving it
+        if entity.get_driver() ~= nil then return end
+        -- If it's a train, only start driving if it's in manual mode
+        if entity.train and not entity.train.manual_mode then return end
+        -- Start driving remotely (this does nothing if it can't be driven remotely and player controller type is remote)
+        entity.set_driver(player)
+    elseif entity.type == "spider-vehicle" then
+        if not player.cursor_stack then return end
+        if pick_remote == "cursor-empty" and player.cursor_stack.valid_for_read then return end
+        if not player.clear_cursor() then return end
 
-    -- otherwise create one
-    if player.is_cursor_empty() then
-        player.cursor_stack.set_stack { name = "spidertron-remote", count = 1 }
-        player.spidertron_remote_selection = { entity }
+        if player.is_cursor_empty() then
+            player.cursor_stack.set_stack { name = "spidertron-remote", count = 1 }
+            player.spidertron_remote_selection = { entity }
+        end
     end
 end
 
@@ -89,33 +99,41 @@ local function go_to_location(player, slot, follow, pick_remote)
         return
     end
 
-    pick_remote = pick_remote or "never"
-    if follow then
-        if slot.entity then
-            player.centered_on = slot.entity
-            do_pick_remote(player, slot.entity, pick_remote)
-            return
+    if slot.entity and pick_remote then
+        -- TODO remote when bug fixed
+        -- Remove the player from any current thing they are driving (remotely)
+        -- There's a bug where going from A->B->A causes A to not be enterable anymore
+        -- This helps, but still doesn't completely solve the issue
+        if player.controller_type == defines.controllers.remote and player.driving then
+            player.driving = false
         end
     end
 
-    --- @type MapPosition
-    local position
-    if slot.position then
-        position = slot.position
-    elseif slot.entity then
-        position = slot.entity.position
-        do_pick_remote(player, slot.entity, pick_remote)
-    end
-    if position == nil then return end -- shouldn't happen...
-    local surface = ulh_util.get_slot_surface(slot)
+    if follow and slot.entity then
+        player.centered_on = slot.entity
+    else
+        --- @type MapPosition
+        local position
+        if slot.position then
+            position = slot.position
+        elseif slot.entity then
+            position = slot.entity.position
+        end
+        if position == nil then return end -- shouldn't happen...
+        local surface = ulh_util.get_slot_surface(slot)
 
-    player.set_controller({
-        type = defines.controllers.remote,
-        position = position,
-        surface = surface,
-    })
+        player.set_controller({
+            type = defines.controllers.remote,
+            position = position,
+            surface = surface,
+        })
+    end
+
     if slot.use_zoom and slot.zoom then
         player.zoom = slot.zoom
+    end
+    if slot.entity and pick_remote then
+        do_pick_remote(player, slot.entity, pick_remote)
     end
 end
 
@@ -355,7 +373,7 @@ script.on_event(defines.events.on_player_changed_surface, function(e)
     ulh_gui.rebuild_table(player, player_data)
 end)
 
---- @param e CustomInputEvent
+--- @param e EventData.CustomInputEvent
 local function on_keyboard_shortcut(e)
     local _, _, capture = string.find(e.input_name, "ulh%-go%-to%-location%-index%-(.+)")
     local index = tonumber(capture) --- @cast index integer

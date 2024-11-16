@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.4.0
+Date: 2024-11-17
+  Features:
+    - Add support for starting remote driving of the target entity when selecting it (works similarly to selecting a spidertron remote)
+---------------------------------------------------------------------------------------------------
 Version: 1.3.0
 Date: 2024-11-03
   Changes:

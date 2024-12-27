@@ -54,10 +54,22 @@ function ulh_util.fill_slot_from_selection(slot, player, selection)
         if selection then
             position = selection.area.left_top
         end
-        slot.surface_index = player.surface.index
+        local surface = player.surface
+        slot.surface_index = surface.index
         slot.position = position
         slot.entity = nil
         slot.sprite = "item/radar"
+        if surface.planet then
+            local path = "space-location/" .. surface.planet.name
+            if helpers.is_valid_sprite_path(path) then
+                slot.sprite = path
+            end
+        elseif surface.platform then
+            local path = "entity/space-platform-hub"
+            if helpers.is_valid_sprite_path(path) then
+                slot.sprite = path
+            end
+        end
         if not slot.caption then
             slot.caption = ulh_util.position_to_string(position)
         end

@@ -135,21 +135,22 @@ function ulh_gui.rebuild_table(player, player_data)
         if slot.entity and not slot.entity.valid then
             if slot.player and slot.player.valid then
                 style = "red_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "May need to wait for player to respawn or rejoin", "\n", "Control + Right-click to delete" }
+                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "May need to wait for player to respawn or rejoin", "\n", "[font=default-semibold][color=#84CDEC]Control Right-click[/color][/font] to delete" }
             else
                 style = "red_slot_button"
-                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "Control + Right-click to delete" }
+                tooltip = { "", prefix, { "gui.ulh-entity-not-valid" }, "\n", "[font=default-semibold][color=#84CDEC]Control Right-click[/color][/font] to delete" }
             end
         elseif not surface then
             style = "red_slot_button"
-            tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "Control + Right-click to delete" }
+            tooltip = { "", prefix, { "gui.ulh-surface-not-valid" }, "\n", "[font=default-semibold][color=#84CDEC]Control Right-click[/color][/font] to delete" }
         else
             style = "slot_button"
-            tooltip = { "", prefix, "Click to go to this position/entity ", hotkey, "\n", [[
-- Hold Control to pick a remote if the target is a spidertron, or start remote driving if possible
-- Hold Shift to follow the entity
-Right-click to edit
-- Hold Control to delete]],
+            tooltip = { "", prefix, "[font=default-semibold][color=#84CDEC]Left Click[/color][/font] to go to this position/entity ", hotkey, "\n", [[
+- Hold [font=default-semibold][color=#84CDEC]Shift[/color][/font] to follow the entity
+- Hold [font=default-semibold][color=#84CDEC]Alt[/color][/font] to start remote driving (if possible)
+- Hold [font=default-semibold][color=#84CDEC]Control[/color][/font] to pick a remote (if the target is a spidertron)
+[font=default-semibold][color=#84CDEC]Right-click[/color][/font] to edit
+[font=default-semibold][color=#84CDEC]Control Right-click[/color][/font] to delete]],
             }
         end
         local button_panel = table.add {

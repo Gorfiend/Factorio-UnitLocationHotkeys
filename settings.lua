@@ -1,18 +1,24 @@
 data:extend({
     {
-        type = "string-setting",
-        name = "ulh-hotkey-picks-remote",
-        setting_type = "runtime-per-user",
-        default_value = "always",
-        allowed_values = { "always", "cursor-empty", "never" },
-        order = "a",
-    },
-    {
         type = "bool-setting",
         name = "ulh-hotkey-starts-follow",
         setting_type = "runtime-per-user",
         default_value = false,
+        order = "a",
+    },
+    {
+        type = "bool-setting",
+        name = "ulh-hotkey-remote-drives",
+        setting_type = "runtime-per-user",
+        default_value = true,
         order = "b",
+    },
+    {
+        type = "bool-setting",
+        name = "ulh-hotkey-picks-remote",
+        setting_type = "runtime-per-user",
+        default_value = true,
+        order = "c",
     },
     {
         type = "int-setting",
@@ -21,7 +27,7 @@ data:extend({
         default_value = 5,
         minimum_value = 1,
         maximum_value = 25,
-        order = "c",
+        order = "d",
     },
     {
         type = "int-setting",
@@ -30,6 +36,6 @@ data:extend({
         default_value = 0,
         minimum_value = 0,
         maximum_value = 25,
-        order = "d",
+        order = "e",
     },
 })

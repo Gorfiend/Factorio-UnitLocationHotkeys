@@ -62,11 +62,17 @@ end
 
 --- @param player LuaPlayer
 --- @param entity LuaEntity
---- @param pick_remote string
-local function do_pick_remote(player, entity, pick_remote)
-    if pick_remote == "never" then return end
-    if entity.type == "car" or entity.type == "locomotive" then
-        -- There's a allow_remote_driving field that should probably be checked here, but I don't see it on the entity or prototype...
+--- @param pick_remote boolean
+--- @param remote_drive boolean
+local function do_pick_remote(player, entity, pick_remote, remote_drive)
+    if pick_remote and entity.type == "spider-vehicle" then
+        if not player.cursor_stack then return end
+        if not player.cursor_stack.valid then return end
+        if player.cursor_stack.set_stack { name = "spidertron-remote", count = 1 } then
+            player.spidertron_remote_selection = { entity }
+        end
+    elseif remote_drive and (entity.type == "car" or entity.type == "locomotive" or entity.type == "spider-vehicle") then
+        -- There's a allow_remote_driving field that would be nice to check here instead, but I don't see it on the entity or prototype...
         -- Ensure the player is in remote view so we don't accidentally teleport them
         if player.controller_type ~= defines.controllers.remote then return end
         -- Don't eject any player that's currently driving it
@@ -75,23 +81,15 @@ local function do_pick_remote(player, entity, pick_remote)
         if entity.train and not entity.train.manual_mode then return end
         -- Start driving remotely (this does nothing if it can't be driven remotely and player controller type is remote)
         entity.set_driver(player)
-    elseif entity.type == "spider-vehicle" then
-        if not player.cursor_stack then return end
-        if pick_remote == "cursor-empty" and player.cursor_stack.valid_for_read then return end
-        if not player.clear_cursor() then return end
-
-        if player.is_cursor_empty() then
-            player.cursor_stack.set_stack { name = "spidertron-remote", count = 1 }
-            player.spidertron_remote_selection = { entity }
-        end
     end
 end
 
 --- @param player LuaPlayer
 --- @param slot ConfigSlot
 --- @param follow boolean
---- @param pick_remote string?
-local function go_to_location(player, slot, follow, pick_remote)
+--- @param pick_remote boolean
+--- @param remote_drive boolean
+local function go_to_location(player, slot, follow, pick_remote, remote_drive)
     if not player or not slot then return end
     ulh_util.update_slot_entity(slot)
     if slot.entity and not slot.entity.valid then
@@ -99,8 +97,8 @@ local function go_to_location(player, slot, follow, pick_remote)
         return
     end
 
-    if slot.entity and pick_remote then
-        -- TODO remote when bug fixed
+    if slot.entity and remote_drive then
+        -- TODO remove when bug fixed
         -- Remove the player from any current thing they are driving (remotely)
         -- There's a bug where going from A->B->A causes A to not be enterable anymore
         -- This helps, but still doesn't completely solve the issue
@@ -109,31 +107,31 @@ local function go_to_location(player, slot, follow, pick_remote)
         end
     end
 
+    --- @type MapPosition
+    local position
+    if slot.position then
+        position = slot.position
+    elseif slot.entity then
+        position = slot.entity.position
+    end
+    if position == nil then return end -- shouldn't happen...
+    local surface = ulh_util.get_slot_surface(slot)
+
+    player.set_controller({
+        type = defines.controllers.remote,
+        position = position,
+        surface = surface,
+    })
+
     if follow and slot.entity then
         player.centered_on = slot.entity
-    else
-        --- @type MapPosition
-        local position
-        if slot.position then
-            position = slot.position
-        elseif slot.entity then
-            position = slot.entity.position
-        end
-        if position == nil then return end -- shouldn't happen...
-        local surface = ulh_util.get_slot_surface(slot)
-
-        player.set_controller({
-            type = defines.controllers.remote,
-            position = position,
-            surface = surface,
-        })
     end
 
     if slot.use_zoom and slot.zoom then
         player.zoom = slot.zoom
     end
-    if slot.entity and pick_remote then
-        do_pick_remote(player, slot.entity, pick_remote)
+    if slot.entity then
+        do_pick_remote(player, slot.entity, pick_remote, remote_drive)
     end
 end
 
@@ -146,7 +144,7 @@ local function on_config_update(player)
     if player_data.edit_slot_index then
         local slot = ulh_util.get_editing_slot(player_data)
         if slot then
-            go_to_location(player, slot, false) -- live preview of zoom level
+            go_to_location(player, slot, false, false, false) -- live preview of zoom level
         end
     end
 end
@@ -220,12 +218,12 @@ script.on_event(defines.events.on_gui_click, function(e)
         ulh_gui.rebuild_table(player, player_data)
         if e.button == defines.mouse_button_type.left then
             ulh_gui.close_edit_window(player, player_data)
-            go_to_location(player, player_data.config[config_index], e.shift, e.control and "always" or "never")
+            go_to_location(player, player_data.config[config_index], e.shift, e.control, e.alt)
         elseif e.button == defines.mouse_button_type.right then
             if e.control then
                 delete_config_index(player, player_data, config_index)
             else
-                go_to_location(player, player_data.config[config_index], false)
+                go_to_location(player, player_data.config[config_index], false, false, false)
                 ulh_gui.open_edit_window(player, config_index)
             end
         end
@@ -380,7 +378,11 @@ local function on_keyboard_shortcut(e)
     local player = game.get_player(e.player_index)
     local player_data = storage.players[e.player_index]
     if player and player_data and player_data.config[index] then
-        go_to_location(player, player_data.config[index], player.mod_settings["ulh-hotkey-starts-follow"].value --[[@as boolean]], player.mod_settings["ulh-hotkey-picks-remote"].value --[[@as string]])
+        local settings = player.mod_settings
+        local follow = settings["ulh-hotkey-starts-follow"].value --[[@as boolean]]
+        local pick_remote = settings["ulh-hotkey-picks-remote"].value --[[@as boolean]]
+        local remote_drive = settings["ulh-hotkey-remote-drives"].value --[[@as boolean]]
+        go_to_location(player, player_data.config[index], follow, pick_remote, remote_drive)
         ulh_gui.rebuild_table(player, player_data)
     end
 end

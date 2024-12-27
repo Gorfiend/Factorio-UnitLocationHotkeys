@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.4.1
+Date: ????
+  Changes:
+    - Add separate setting to start remote driving when using a hotkey
+    - Changed setting for picking spidertron remote
+---------------------------------------------------------------------------------------------------
 Version: 1.4.0
 Date: 2024-11-17
   Features:

@@ -10,6 +10,7 @@ local ulh_gui = {}
 --- @class PlayerGuiConfig
 --- @field expanded boolean
 --- @field labeled boolean
+--- @field floating boolean
 --- @field frame LuaGuiElement
 --- @field add_shortcut_button LuaGuiElement?
 --- @field edit_window EditWindowConfig
@@ -34,18 +35,26 @@ local ulh_gui = {}
 --- @param player_data PlayerData
 function ulh_gui.init_player_gui(player, player_data)
     player_data.gui.expanded = true
+    player_data.gui.floating = false
     ulh_gui.create_frame(player, player_data)
+    ulh_gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 function ulh_gui.create_frame(player, player_data)
-    player_data.gui.frame = mod_gui.get_frame_flow(player).add {
+    local parent
+    if player_data.gui.floating then
+        parent = player.gui.screen
+    else
+        parent = mod_gui.get_frame_flow(player)
+    end
+    player_data.gui.frame = parent.add {
         type = "frame",
+        name = "ulh_main_shortcut_frame",
         style = mod_gui.frame_style,
         direction = "vertical",
     }
-    ulh_gui.rebuild_table(player, player_data)
 end
 
 --- @param player LuaPlayer
@@ -55,7 +64,13 @@ function ulh_gui.rebuild_table(player, player_data)
     if not (gui_data.frame and gui_data.frame.valid) then
         -- Something invalidated our frame... recreate it from scratch
         ulh_gui.create_frame(player, player_data)
-        return
+    else
+        local was_floating = gui_data.frame.parent == player.gui.screen
+        if was_floating ~= gui_data.floating then
+            -- Floating state changed - recreate the main frame
+            gui_data.frame.destroy()
+            ulh_gui.create_frame(player, player_data)
+        end
     end
     gui_data.frame.clear()
 
@@ -95,6 +110,25 @@ function ulh_gui.rebuild_table(player, player_data)
     if gui_data.labeled then
         label_button.style = "ulh_selected_frame_action_button"
     end
+
+    if gui_data.floating then
+        local drag_handle = toolbar.add {
+            type = "empty-widget",
+            style = "draggable_space",
+        }
+        drag_handle.style.horizontally_stretchable = true
+        drag_handle.drag_target = gui_data.frame
+        drag_handle.style.height = 24
+    end
+
+    local pin_button = toolbar.add {
+        type = "sprite-button",
+        tooltip = "Toggle between floating or docked window",
+        style = "frame_action_button",
+        name = "ulh_pin_button",
+        sprite = "utility/track_button_white",
+    }
+
 
     local content = gui_data.frame.add {
         type = "frame",

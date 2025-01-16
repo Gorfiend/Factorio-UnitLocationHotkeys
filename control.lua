@@ -187,6 +187,10 @@ script.on_event(defines.events.on_gui_click, function(e)
         local player_data = storage.players[e.player_index]
         player_data.gui.labeled = not player_data.gui.labeled
         ulh_gui.rebuild_table(player, player_data)
+    elseif e.element.name == "ulh_pin_button" then
+        local player_data = storage.players[e.player_index]
+        player_data.gui.floating = not player_data.gui.floating
+        ulh_gui.rebuild_table(player, player_data)
     elseif e.element.name == "ulh_add_shortcut_button" then
         if e.shift then
             add_shortcut(player)
@@ -444,11 +448,14 @@ script.on_init(function()
 end)
 
 script.on_configuration_changed(function(e)
-    -- Update everyone's table to use the new tooltip
+    -- Apply any gui changes
     if e.mod_changes["UnitLocationHotkeys"] ~= nil then
         for player_index, player_data in pairs(storage.players) do
             local player = game.get_player(player_index)
             if player then
+                if player_data.gui.floating == nil then
+                    player_data.gui.floating = false
+                end
                 ulh_gui.rebuild_table(player, player_data)
             end
         end

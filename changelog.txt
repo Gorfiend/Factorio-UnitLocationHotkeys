@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.4.1
+Version: 1.5.0
 Date: ????
+  Features:
+    - Add button to toggle the shortcut panel to be a movable window
   Changes:
     - Add separate setting to start remote driving when using a hotkey
     - Changed setting for picking spidertron remote

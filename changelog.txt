@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.5.0
-Date: ????
+Date: 2025-01-18
   Features:
     - Add button to toggle the shortcut panel to be a movable window
   Changes:

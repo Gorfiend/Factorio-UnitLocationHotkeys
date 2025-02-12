@@ -45,18 +45,38 @@ end
 
 --- @param player LuaPlayer
 --- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
-local function add_shortcut(player, selection)
+--- @param entity LuaEntity?
+--- @param index int?
+local function add_shortcut(player, selection, entity, index)
     local player_data = storage.players[player.index]
 
-    --- @type ConfigSlot
-    local config_slot = {
-        use_zoom = false,
-        zoom = constants.zoom.default,
-    }
+    local config_slot = ulh_util.create_new_slot()
 
-    ulh_util.fill_slot_from_selection(config_slot, player, selection)
-
-    table.insert(player_data.config, config_slot)
+    if selection then
+        ulh_util.fill_slot_from_selection(config_slot, selection)
+    elseif entity then
+        ulh_util.fill_slot_from_entity(config_slot, entity)
+    elseif player.position then
+        ulh_util.fill_slot_from_position(config_slot, player.position, player.surface)
+    else
+        return
+    end
+    if index then
+        local limited_index = math.min(index, #player_data.config + 1) -- TODO allow non-sequential shortcuts
+        if player.mod_settings["ulh-create-slot-hotkey-mode"].value == "insert" then
+            table.insert(player_data.config, limited_index, config_slot)
+        elseif player.mod_settings["ulh-create-slot-hotkey-mode"].value == "replace" then
+            player_data.config[limited_index] = config_slot
+        else -- player.mod_settings["ulh-create-slot-hotkey-mode"].value == "move-to-end" then
+            local old_shortcut = player_data.config[limited_index]
+            player_data.config[limited_index] = config_slot
+            if old_shortcut then
+                table.insert(player_data.config, old_shortcut)
+            end
+        end
+    else
+        table.insert(player_data.config, config_slot)
+    end
     ulh_gui.rebuild_table(player, player_data)
 end
 
@@ -97,16 +117,6 @@ local function go_to_location(player, slot, follow, pick_remote, remote_drive)
         return
     end
 
-    if slot.entity and remote_drive then
-        -- TODO remove when bug fixed
-        -- Remove the player from any current thing they are driving (remotely)
-        -- There's a bug where going from A->B->A causes A to not be enterable anymore
-        -- This helps, but still doesn't completely solve the issue
-        if player.controller_type == defines.controllers.remote and player.driving then
-            player.driving = false
-        end
-    end
-
     --- @type MapPosition
     local position
     if slot.position then
@@ -127,6 +137,7 @@ local function go_to_location(player, slot, follow, pick_remote, remote_drive)
         player.centered_on = slot.entity
     end
 
+    -- TODO no way to not change the zoom level? Should update to remove that option
     if slot.use_zoom and slot.zoom then
         player.zoom = slot.zoom
     end
@@ -193,7 +204,7 @@ script.on_event(defines.events.on_gui_click, function(e)
         ulh_gui.rebuild_table(player, player_data)
     elseif e.element.name == "ulh_add_shortcut_button" then
         if e.shift then
-            add_shortcut(player)
+            add_shortcut(player, nil, player.character)
         else
             local player_data = storage.players[e.player_index]
             if not player.cursor_stack then return end
@@ -352,7 +363,7 @@ local function on_selection(e)
         -- editing
         local slot = ulh_util.get_editing_slot(player_data)
 
-        ulh_util.fill_slot_from_selection(slot, player, e)
+        ulh_util.create_slot_from_selection(slot, player, e)
         on_config_update(player)
     else
         -- create new
@@ -393,6 +404,21 @@ end
 
 for i = 1, 10 do
     script.on_event("ulh-go-to-location-index-" .. i, on_keyboard_shortcut)
+end
+
+--- @param e EventData.CustomInputEvent
+local function on_keyboard_shortcut_create_slot(e)
+    local _, _, capture = string.find(e.input_name, "ulh%-create%-shortcut%-index%-(.+)")
+    local index = tonumber(capture) --- @cast index integer
+    local player = game.get_player(e.player_index)
+    local player_data = storage.players[e.player_index]
+    if player and player_data then
+        add_shortcut(player, nil, player.selected, index)
+    end
+end
+
+for i = 1, 10 do
+    script.on_event("ulh-create-shortcut-index-" .. i, on_keyboard_shortcut_create_slot)
 end
 
 

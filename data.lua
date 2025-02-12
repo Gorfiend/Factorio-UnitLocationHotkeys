@@ -36,41 +36,24 @@ for i = 1, 10 do
             key_sequence = "ALT + " .. (i % 10),
             action = 'lua',
             enabled_while_spectating = true,
+            order = string.format('a%02d', i),
         }
     })
 end
 
+for i = 1, 10 do
+    data:extend({
+        {
+            type = 'custom-input',
+            name = 'ulh-create-shortcut-index-' .. i,
+            key_sequence = "CONTROL + ALT + " .. (i % 10),
+            action = 'lua',
+            enabled_while_spectating = true,
+            order = string.format('b%02d', i),
+        }
+    })
+end
 
-data:extend({
-    {
-        type = "custom-input",
-        name = "ulh-follow-move-up",
-        key_sequence = "",
-        linked_game_control = "move-up",
-        action = "lua",
-    },
-    {
-        type = "custom-input",
-        name = "ulh-follow-move-down",
-        key_sequence = "",
-        linked_game_control = "move-down",
-        action = "lua",
-    },
-    {
-        type = "custom-input",
-        name = "ulh-follow-move-left",
-        key_sequence = "",
-        linked_game_control = "move-left",
-        action = "lua",
-    },
-    {
-        type = "custom-input",
-        name = "ulh-follow-move-right",
-        key_sequence = "",
-        linked_game_control = "move-right",
-        action = "lua",
-    },
-})
 
 -- Taken from flib
 data.raw["gui-style"].default.ulh_selected_frame_action_button = {

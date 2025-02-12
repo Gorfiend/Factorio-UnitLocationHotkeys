@@ -1,3 +1,5 @@
+local constants = require("constants")
+
 local ulh_util = {}
 
 --- @param player_data PlayerData
@@ -20,66 +22,83 @@ function ulh_util.get_slot_surface(slot)
     end
 end
 
+--- @return ConfigSlot slot
+function ulh_util.create_new_slot()
+    return {
+        use_zoom = false,
+        zoom = constants.zoom.default,
+    }
+end
+
 --- @param slot ConfigSlot
---- @param player LuaPlayer
---- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area?
-function ulh_util.fill_slot_from_selection(slot, player, selection)
+--- @param entity LuaEntity
+function ulh_util.fill_slot_from_entity(slot, entity)
     slot.player = nil
-    if selection and #(selection.entities) > 0 then
-        local entity = selection.entities[1]
-        local is_character = entity.prototype.type == 'character'
-        slot.surface_index = nil
-        slot.entity = entity
-        slot.position = nil
-        if is_character and entity.player then
-            slot.player = entity.player
-        end
-        local recipe_name = ulh_util.get_entity_recipe(entity)
-        if recipe_name then
-            slot.sprite = "recipe/" .. recipe_name
-        else
-            slot.sprite = "entity/" .. entity.name
-        end
-        if not slot.caption then
-            if entity.entity_label then
-                slot.caption = entity.entity_label
-            elseif is_character and entity.player then
-                slot.caption = entity.player.name
-            else
-                slot.caption = ""
-            end
-        end
+    local is_character = entity.prototype.type == 'character'
+    slot.surface_index = nil
+    slot.entity = entity
+    slot.position = nil
+    if is_character and entity.player then
+        slot.player = entity.player
+    end
+    local recipe_name = ulh_util.get_entity_recipe(entity)
+    if recipe_name then
+        slot.sprite = "recipe/" .. recipe_name
     else
-        local position = player.position
-        if selection then
-            position = selection.area.left_top
+        slot.sprite = "entity/" .. entity.name
+    end
+    if not slot.caption then
+        if entity.entity_label then
+            slot.caption = entity.entity_label
+        elseif is_character and entity.player then
+            slot.caption = entity.player.name
+        else
+            slot.caption = ""
         end
-        local surface = player.surface
-        slot.surface_index = surface.index
-        slot.position = position
-        slot.entity = nil
-        slot.sprite = "item/radar"
-        if surface.planet then
-            local path = "space-location/" .. surface.planet.name
-            if helpers.is_valid_sprite_path(path) then
-                slot.sprite = path
-            end
-        elseif surface.platform then
-            local path = "entity/space-platform-hub"
-            if helpers.is_valid_sprite_path(path) then
-                slot.sprite = path
-            end
+    end
+end
+
+--- @param slot ConfigSlot
+--- @param position MapPosition
+--- @param surface LuaSurface
+function ulh_util.fill_slot_from_position(slot, position, surface)
+    slot.player = nil
+    slot.surface_index = surface.index
+    slot.position = position
+    slot.entity = nil
+    slot.sprite = "item/radar"
+    if surface.planet then
+        local path = "space-location/" .. surface.planet.name
+        if helpers.is_valid_sprite_path(path) then
+            slot.sprite = path
         end
-        if not slot.caption then
-            slot.caption = ulh_util.position_to_string(position)
+    elseif surface.platform then
+        local path = "entity/space-platform-hub"
+        if helpers.is_valid_sprite_path(path) then
+            slot.sprite = path
         end
+    end
+    if not slot.caption then
+        slot.caption = ulh_util.position_to_string(position)
+    end
+end
+
+--- @param slot ConfigSlot
+--- @param selection EventData.on_player_selected_area|EventData.on_player_alt_selected_area
+function ulh_util.fill_slot_from_selection(slot, selection)
+    if selection and #(selection.entities) > 0 then
+        ulh_util.fill_slot_from_entity(slot, selection.entities[1])
+    else
+        local position = selection.area.left_top
+        local surface = selection.surface
+        ulh_util.fill_slot_from_position(slot, position, surface)
     end
 end
 
 --- @param position MapPosition
 --- @return string
 function ulh_util.position_to_string(position)
-    return "x=" .. string.format("%.0f", position.x) .. " y=" .. string.format("%.0f", position.y)
+    return "{" .. string.format("%.0f", position.x) .. ", " .. string.format("%.0f", position.y) .. "}"
 end
 
 --- @param entity LuaEntity

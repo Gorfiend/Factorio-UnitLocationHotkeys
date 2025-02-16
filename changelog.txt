@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.6.0
-Date: ????
-  Changes:
+Date: 2025-02-16
+  Features:
+    - Add hotkeys to immediately add the selected object (or current position) as a shortcut (default Control + Alt + #)
 ---------------------------------------------------------------------------------------------------
 Version: 1.5.0
 Date: 2025-01-18

@@ -363,7 +363,7 @@ local function on_selection(e)
         -- editing
         local slot = ulh_util.get_editing_slot(player_data)
 
-        ulh_util.create_slot_from_selection(slot, player, e)
+        ulh_util.fill_slot_from_selection(slot, e)
         on_config_update(player)
     else
         -- create new

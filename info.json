@@ -1,9 +1,9 @@
 {
   "name": "UnitLocationHotkeys",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "title": "Unit/Location Hotkeys",
   "author": "Gorfiend",
-  "factorio_version": "2.0",
-  "dependencies": [ "base >= 2.0" ],
+  "factorio_version": "2.1",
+  "dependencies": [ "base >= 2.1" ],
   "description": "Adds configurable shortcuts and hotkeys to center your view on a specific entity or location, similar to control groups in an RTS"
 }
